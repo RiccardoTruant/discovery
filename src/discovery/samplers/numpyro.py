@@ -44,7 +44,59 @@ def makesampler_nuts(numpyro_model, num_warmup=512, num_samples=1024, num_chains
                     chain_method='vectorized', progress_bar=True,
                     **{arg: val for arg in kwargs.items() if arg in inspect.getfullargspec(infer.MCMC).kwonlyargs})
 
-    sampler = infer.MCMC(infer.NUTS(numpyro_model, **nutsargs), **mcmcargs)
-    sampler.to_df = lambda: numpyro_model.to_df(sampler.get_samples())
+    mcmc = infer.MCMC(infer.NUTS(numpyro_model, **nutsargs), **mcmcargs)
 
-    return sampler
+    class Sampler:
+        def __init__(self, mcmc, model):
+            self.mcmc = mcmc
+            self.model = model
+            self.samples = None
+
+        def run(self, rng_key):
+            self.mcmc.run(rng_key)
+            self.samples = self.mcmc.get_samples()
+
+        def make_plots(self, save_name=None, diagnostics=False):
+            import matplotlib.pyplot as plt
+            import corner
+            if self.samples is None:
+                raise RuntimeError("Run the sampler before making plots.")
+
+            df = self.to_df()
+            labels = list(df.columns)
+            samples_array = df[labels].values
+
+            fig = corner.corner(
+                samples_array,
+                labels=labels,
+                show_titles=True,
+                title_fmt=".2f",
+                title_kwargs={"fontsize": 10},
+                label_kwargs={"fontsize": 9},
+                plot_datapoints=True,
+                hist_kwargs={"color": "C0"},
+                contour_kwargs={"colors": ["C0"]}
+            )
+
+            plt.tight_layout()
+            if save_name:
+                plt.savefig(save_name + "_corner.png")
+            plt.close()
+
+        def to_df(self):
+            import numpy as np
+            if self.samples is None:
+                raise RuntimeError("Run the sampler before accessing results.")
+
+            data = {}
+            for k, v in self.samples.items():
+                v_np = np.array(v)
+                if v_np.ndim == 1:
+                    data[k] = v_np
+                else:
+                    for j in range(v_np.shape[1]):
+                        data[f"{k}[{j}]"] = v_np[:, j]
+            return pd.DataFrame(data)
+
+    return Sampler(mcmc, numpyro_model)
+

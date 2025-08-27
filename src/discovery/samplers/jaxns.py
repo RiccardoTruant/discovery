@@ -66,25 +66,31 @@ def makesampler_nested(model, max_samples=1e6, num_live_points=None, **kwargs):
             self.results = self.ns.to_results(termination_reason=self.termination, state=self.state)
             self.ns.summary(self.results)
 
-        def make_plots(self, save_name=None):
-            self.ns.plot_diagnostics(self.results, save_name=save_name+'_diagnostics.png')
+        def make_plots(self, save_name=None, diagnostics=False):
+            if diagnostics:
+                self.ns.plot_diagnostics(self.results, save_name=save_name+'_diagnostics.png')
             self.ns.plot_cornerplot(self.results, save_name=save_name+'_corner.png')
 
-        def to_df(self, S=None, seed=0):
-            samples = self.results.samples
-            log_weights = self.results.log_dp_mean
-            if S is None:
-                first_key = next(iter(samples))
-                S = samples[first_key].shape[0]
-            resampled = resample(jax.random.PRNGKey(seed), samples=samples, log_weights=log_weights, S=S)
+        def to_df(self):
+            r = self.results
+            samples = r.samples  # dict of parameter arrays
+            logl = np.array(r.log_L_samples)
+            logpost = np.array(r.log_posterior_density)
+
             data = {}
-            for name, arr in resampled.items():
+            for name, arr in samples.items():
                 arr_np = np.array(arr)
                 if arr_np.ndim == 1:
                     data[name] = arr_np
                 else:
                     for j in range(arr_np.shape[1]):
                         data[f"{name}[{j}]"] = arr_np[:, j]
+
+            data['logl'] = logl
+            data['logposterior'] = logpost
+            posterior = np.exp(logpost - np.max(logpost))
+            posterior /= np.sum(posterior)
+            data['posterior'] = posterior
 
             return pd.DataFrame(data)
 
