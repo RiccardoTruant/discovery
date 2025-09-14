@@ -93,7 +93,7 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, background=True, red=True, dm=
     psr_components = int(psr_Tspan / (max_cadence_days * 86400))
     psr_knots = 2 * psr_components + 1
 
-    return (([signals.makegp_fftcov(psr, signals.powerlaw_fixgam(), components=psr_knots, name='bkgrnd')] if background else []) + \
+    return (([signals.makegp_fftcov(psr, signals.powerlaw_fixgam, components=psr_knots, name='bkgrnd')] if background else []) + \
             ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_knots, name='red_noise')] if red else []) + \
             ([signals.makegp_fftcov_dm(psr, signals.powerlaw, components=psr_knots, name='dm_gp')] if dm else [])+ \
             ([signals.makegp_fftcov_chrom(psr, signals.powerlaw, components=psr_knots, name='chrom_gp')] if chrom else [])+ \
