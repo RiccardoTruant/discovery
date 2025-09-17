@@ -34,8 +34,11 @@ prior.priordict_standard.update({
     '(.*_)?sw_gp_gamma':        [0, 4],
     '(.*_)?band_gp_log10_A':    [-18, -11],
     '(.*_)?band_gp_gamma':      [0, 7],
-    '(.*_)?band_gp_alpha':      [0, 7],
     '(.*_)?band_gp_fcutoff':    [856, 1712],
+    '(.*_)?bandalpha_gp_log10_A':    [-18, -11],
+    '(.*_)?bandalpha_gp_gamma':      [0, 7],
+    '(.*_)?bandalpha_gp_alpha':      [0, 7],
+    '(.*_)?bandalpha_gp_fcutoff':    [856, 1712],
     # common noise parameters
     'curn_log10_A':             [-18, -11],
     'curn_gamma':               [0, 7],
@@ -85,7 +88,7 @@ def make_psr_gps_fourier(psr, max_cadence_days=14, background=True, red=True, dm
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_chrom, name='chrom_gp')] if chrom else [])+ \
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=solar.fourierbasis_solar_dm, name='sw_gp')] if sw else []) + \
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_band_low, name='band_gp')] if band else []) + \
-            ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_band_low_alpha, name='band_gp_alpha')] if band_alpha else []))
+            ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_band_low_alpha, name='bandalpha_gp')] if band_alpha else []))
 
 
 def make_psr_gps_fftint(psr, max_cadence_days=14, background=True, red=True, dm=True, chrom=True, sw=True, band=False, band_alpha=False):
@@ -99,7 +102,7 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, background=True, red=True, dm=
             ([signals.makegp_fftcov_chrom(psr, signals.powerlaw, components=psr_knots, name='chrom_gp')] if chrom else [])+ \
             ([signals.makegp_fftcov_solar(psr, signals.powerlaw, components=psr_knots, name='sw_gp')] if sw else []) + \
             ([signals.makegp_fftcov_band(psr, signals.powerlaw, components=psr_knots, name='band_gp')] if band else []) + \
-            ([signals.makegp_fftcov_band_alpha(psr, signals.powerlaw, components=psr_knots, name='band_gp_alpha')] if band_alpha else []))
+            ([signals.makegp_fftcov_band_alpha(psr, signals.powerlaw, components=psr_knots, name='bandalpha_gp')] if band_alpha else []))
 
 def make_common_gps_fourier(psrs, common_components=30, max_cadence_days=14, background=True, red=True, dm=True, chrom=True, sw=True, band=False, band_alpha=False):
     Tspan = signals.getspan(psrs)
