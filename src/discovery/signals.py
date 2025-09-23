@@ -333,26 +333,46 @@ def fourierbasis_chrom(psr, components, T=None, fref=1400.0):
 
     return f, df, fmatfunc
 
-def fourierbasis_band_low(psr, components, T=None, fref=1400.0):
+def fourierbasis_band(psr, components, T=None):
     f, df, fmat = fourierbasis(psr, components, T)
 
-    fmat, fnorm = matrix.jnparray(fmat), matrix.jnparray(fref / psr.freqs)
+    fmat = matrix.jnparray(fmat)
     def fmatfunc(fcutoff):
         scale = 5.0
         band_filter = jnp.reciprocal(1.0 + jnp.exp((psr.freqs - fcutoff) / scale))  # at scale=5.0 MHz, the 10% to 90% roll-off happens across ~22MHz.
-        # band_filter = jnp.heaviside(fcutoff - psr.freqs, 0.0) # 0.0 for freqs >= fcutoff
-        return fmat * fnorm[:, None] * band_filter[:, None]
+        return fmat * band_filter[:, None]
 
     return f, df, fmatfunc
 
-def fourierbasis_band_low_alpha(psr, components, T=None, fref=1400.0):
+def fourierbasis_band_range(psr, components, T=None):
+    f, df, fmat = fourierbasis(psr, components, T)
+
+    fmat = matrix.jnparray(fmat)
+    def fmatfunc(flow, fhigh):
+        scale = 5.0
+        band_filter = jnp.reciprocal(1.0 + jnp.exp((flow - psr.freqs) / scale)) * jnp.reciprocal(1.0 + jnp.exp((psr.freqs - fhigh) / scale))  # at scale=5.0 MHz, the 10% to 90% roll-off happens across ~22MHz.
+        return fmat * band_filter[:, None]
+
+    return f, df, fmatfunc
+
+def fourierbasis_band_alpha(psr, components, T=None, fref=1400.0):
     f, df, fmat = fourierbasis(psr, components, T)
 
     fmat, fnorm = matrix.jnparray(fmat), matrix.jnparray(fref / psr.freqs)
     def fmatfunc(fcutoff, alpha):
         scale = 5.0
         band_filter = jnp.reciprocal(1.0 + jnp.exp((psr.freqs - fcutoff) / scale))  # at scale=5.0 MHz, the 10% to 90% roll-off happens across ~22MHz.
-        # band_filter = jnp.heaviside(fcutoff - psr.freqs, 0.0) # 0.0 for freqs >= fcutoff
+        return fmat * fnorm[:, None]**alpha * band_filter[:, None]
+
+    return f, df, fmatfunc
+
+def fourierbasis_band_range_alpha(psr, components, T=None, fref=1400.0):
+    f, df, fmat = fourierbasis(psr, components, T)
+
+    fmat, fnorm = matrix.jnparray(fmat), matrix.jnparray(fref / psr.freqs)
+    def fmatfunc(flow, fhigh, alpha):
+        scale = 5.0
+        band_filter = jnp.reciprocal(1.0 + jnp.exp((flow - psr.freqs) / scale)) * jnp.reciprocal(1.0 + jnp.exp((psr.freqs - fhigh) / scale))  # at scale=5.0 MHz, the 10% to 90% roll-off happens across ~22MHz.
         return fmat * fnorm[:, None]**alpha * band_filter[:, None]
 
     return f, df, fmatfunc
@@ -737,26 +757,54 @@ def make_timeinterpbasis_band(start_time=None, order=1, fref=1400.0):
 
     def timeinterpbasis_band(psr, nmodes, T):
         t_coarse, dt_coarse, Bmat = timeinterpbasis_achrom(psr, nmodes, T)
-        scale = (fref / psr.freqs)
         def Bmat_func(fcutoff):
-            band_filter = jnp.heaviside(fcutoff - psr.freqs, 0.0) # 0.0 for freqs >= fcutoff
-            return scale[:, None] * Bmat * band_filter[:, None]
+            scale = 5.0
+            band_filter = jnp.reciprocal(1.0 + jnp.exp((psr.freqs - fcutoff) / scale))
+            return Bmat * band_filter[:, None]
         return t_coarse, dt_coarse, Bmat_func
 
     return timeinterpbasis_band
+
+def make_timeinterpbasis_band_range(start_time=None, order=1, fref=1400.0):
+    timeinterpbasis_achrom = make_timeinterpbasis(start_time=start_time, order=order)
+
+    def timeinterpbasis_band_range(psr, nmodes, T):
+        t_coarse, dt_coarse, Bmat = timeinterpbasis_achrom(psr, nmodes, T)
+        def Bmat_func(flow, fhigh):
+            scale = 5.0
+            band_filter = jnp.reciprocal(1.0 + jnp.exp((flow - psr.freqs) / scale)) * jnp.reciprocal(1.0 + jnp.exp((psr.freqs - fhigh) / scale))
+            return Bmat * band_filter[:, None]
+        return t_coarse, dt_coarse, Bmat_func
+
+    return timeinterpbasis_band_range
 
 def make_timeinterpbasis_band_alpha(start_time=None, order=1, fref=1400.0):
     timeinterpbasis_achrom = make_timeinterpbasis(start_time=start_time, order=order)
 
     def timeinterpbasis_band_alpha(psr, nmodes, T):
         t_coarse, dt_coarse, Bmat = timeinterpbasis_achrom(psr, nmodes, T)
-        scale = (fref / psr.freqs)
+        fnorm = (fref / psr.freqs)
         def Bmat_func(fcutoff, alpha):
-            band_filter = jnp.heaviside(fcutoff - psr.freqs, 0.0) # 0.0 for freqs >= fcutoff
-            return scale[:, None]**alpha * Bmat * band_filter[:, None]  # 0.0 for freqs >= fcutoff
+            scale = 5.0
+            band_filter = jnp.reciprocal(1.0 + jnp.exp((psr.freqs - fcutoff) / scale))  # at scale=5.0 MHz, the 10% to 90% roll-off happens across ~22MHz.
+            return fnorm[:, None]**alpha * Bmat * band_filter[:, None]  # 0.0 for freqs >= fcutoff
         return t_coarse, dt_coarse, Bmat_func
 
     return timeinterpbasis_band_alpha
+
+def make_timeinterpbasis_band_range_alpha(start_time=None, order=1, fref=1400.0):
+    timeinterpbasis_achrom = make_timeinterpbasis(start_time=start_time, order=order)
+
+    def timeinterpbasis_band_range_alpha(psr, nmodes, T):
+        t_coarse, dt_coarse, Bmat = timeinterpbasis_achrom(psr, nmodes, T)
+        fnorm = (fref / psr.freqs)
+        def Bmat_func(flow, fhigh, alpha):
+            scale = 5.0
+            band_filter = jnp.reciprocal(1.0 + jnp.exp((flow - psr.freqs) / scale)) * jnp.reciprocal(1.0 + jnp.exp((psr.freqs - fhigh) / scale))  # at scale=5.0 MHz, the 10% to 90% roll-off happens across ~22MHz.
+            return fnorm[:, None]**alpha * Bmat * band_filter[:, None]  # 0.0 for freqs >= fcutoff
+        return t_coarse, dt_coarse, Bmat_func
+
+    return timeinterpbasis_band_range_alpha
 
 def make_timeinterpbasis_dm(start_time=None, order=1, fref=1400.0):
     timeinterpbasis_achrom = make_timeinterpbasis(start_time=start_time, order=order)
@@ -830,15 +878,25 @@ def makegp_fftcov_chrom(psr, prior, components, T=None, t0=None, order=1, oversa
     return makegp_fourier(psr, psd2cov(prior, components, T, oversample, fmax_factor, cutoff),
                           components, T=T, fourierbasis=make_timeinterpbasis_chromatic(start_time=t0, order=order, fref=fref), common=common, name=name)
 
-def makegp_fftcov_band(psr, prior, components, T=None, t0=None, order=1, oversample=3, fmax_factor=1, cutoff=1, common=[], name='fftcovGP_chrom', fref=1400.0):
+def makegp_fftcov_band(psr, prior, components, T=None, t0=None, order=1, oversample=3, fmax_factor=1, cutoff=1, common=[], name='fftcovGP_band', fref=1400.0):
     T = getspan(psr) if T is None else T
     return makegp_fourier(psr, psd2cov(prior, components, T, oversample, fmax_factor, cutoff),
                           components, T=T, fourierbasis=make_timeinterpbasis_band(start_time=t0, order=order, fref=fref), common=common, name=name)
 
-def makegp_fftcov_band_alpha(psr, prior, components, T=None, t0=None, order=1, oversample=3, fmax_factor=1, cutoff=1, common=[], name='fftcovGP_chrom', fref=1400.0):
+def makegp_fftcov_band_range(psr, prior, components, T=None, t0=None, order=1, oversample=3, fmax_factor=1, cutoff=1, common=[], name='fftcovGP_band_range', fref=1400.0):
+    T = getspan(psr) if T is None else T
+    return makegp_fourier(psr, psd2cov(prior, components, T, oversample, fmax_factor, cutoff),
+                          components, T=T, fourierbasis=make_timeinterpbasis_band_range(start_time=t0, order=order, fref=fref), common=common, name=name)
+
+def makegp_fftcov_band_alpha(psr, prior, components, T=None, t0=None, order=1, oversample=3, fmax_factor=1, cutoff=1, common=[], name='fftcovGP_band_alpha', fref=1400.0):
     T = getspan(psr) if T is None else T
     return makegp_fourier(psr, psd2cov(prior, components, T, oversample, fmax_factor, cutoff),
                           components, T=T, fourierbasis=make_timeinterpbasis_band_alpha(start_time=t0, order=order, fref=fref), common=common, name=name)
+
+def makegp_fftcov_band_range_alpha(psr, prior, components, T=None, t0=None, order=1, oversample=3, fmax_factor=1, cutoff=1, common=[], name='fftcovGP_band_range_alpha', fref=1400.0):
+    T = getspan(psr) if T is None else T
+    return makegp_fourier(psr, psd2cov(prior, components, T, oversample, fmax_factor, cutoff),
+                          components, T=T, fourierbasis=make_timeinterpbasis_band_range_alpha(start_time=t0, order=order, fref=fref), common=common, name=name)
 
 def makegp_fftcov_solar(psr, prior, components, T=None, t0=None, order=1, oversample=3, fmax_factor=1, cutoff=1, common=[], name='fftcovGP_solar'):
     T = getspan(psr) if T is None else T
@@ -877,6 +935,9 @@ def powerlaw(f, df, log10_A, gamma):
 
 def powerlaw_fixgam(f, df, log10_A):
     return (10.0**(2.0 * log10_A)) / 12.0 / jnp.pi**2 * const.fyr ** (4.33 - 3.0) * f ** (-4.33) * df
+
+def powerlaw_bkgrnd(f, df): # fixed amplitude and slope for a GWB at A = 2*10**-15
+    return ((2 * 10**(-15))**2) / 12.0 / jnp.pi**2 * const.fyr ** (4.33 - 3.0) * f ** (-4.33) * df
 
 def brokenpowerlaw(f, df, log10_A, gamma, log10_fb):
     kappa = 0.1 # smoothness of transition
