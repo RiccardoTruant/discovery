@@ -125,7 +125,7 @@ def makesampler_nested(model, max_samples=1e6, num_live_points=None, init_effici
             return df
 
         def make_plots(self, save_name=None, diagnostics=False,
-                       include_aux=False, use_weights=True):
+                       include_aux=False, equal_weight=True):
             import matplotlib.pyplot as plt
             import corner
 
@@ -138,7 +138,7 @@ def makesampler_nested(model, max_samples=1e6, num_live_points=None, init_effici
             else:
                 reserved = reserved | {'logl', 'logposterior', 'weight'}
 
-            if use_weights:
+            if not equal_weight:
                 df = self.to_df(equal_weight=False, include_weights=True)
                 labels = [c for c in df.columns if c not in reserved]
                 data = df[labels].values
