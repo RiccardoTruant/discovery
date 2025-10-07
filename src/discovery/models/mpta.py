@@ -15,53 +15,58 @@ def write_ml_json(df, savename):
         json.dump(ml_params, f, indent=2)
     return
 
-prior.priordict_standard.update({
-    # White noise parameters
-    '(.*_)?efac':               [0.5, 2],
-    '(.*_)?log10_tnequad':      [-10, -5],
-    '(.*_)?log10_ecorr':        [-10, -5],
-    # Per-pulsar GW background parameters
-    '(.*_)?bkgrnd_log10_A':     [-18, -11],
-    # GP parameters
-    '(.*_)?red_noise_log10_A':  [-18, -11],
-    '(.*_)?red_noise_gamma':    [0, 7],
-    '(.*_)?dm_gp_log10_A':      [-18, -11],
-    '(.*_)?dm_gp_gamma':        [0, 7],
-    '(.*_)?chrom_gp_log10_A':   [-18, -11],
-    '(.*_)?chrom_gp_gamma':     [0, 7],
-    '(.*_)?chrom_gp_alpha':     [2.5, 14],
-    '(.*_)?sw_gp_log10_A':      [-10, -2],
-    '(.*_)?sw_gp_gamma':        [0, 4],
-    '(.*_)?band_gp_log10_A':    [-18, -11],
-    '(.*_)?band_gp_gamma':      [0, 7],
-    '(.*_)?band_gp_fcutoff':    [856, 1712],
-    '(.*_)?band_gp_flow':       [856, 1712],
-    '(.*_)?band_gp_fhigh':      [856, 1712],
-    '(.*_)?bandalpha_gp_log10_A':    [-18, -11],
-    '(.*_)?bandalpha_gp_gamma':      [0, 7],
-    '(.*_)?bandalpha_gp_alpha':      [0, 10],
-    '(.*_)?bandalpha_gp_fcutoff':    [856, 1712],
-    '(.*_)?bandalpha_gp_fhigh':    [856, 1712],
-    '(.*_)?bandalpha_gp_flow':    [856, 1712],
-    # common noise parameters
-    'curn_log10_A':             [-18, -11],
-    'curn_gamma':               [0, 7],
-    # deterministic parameters
-    '(.*_)?chrom_exp_t0': [58525, 60700],
-    '(.*_)?chrom_exp_log10_Amp': [-10, -4],
-    '(.*_)?chrom_exp_log10_tau': [0, 4],
-    '(.*_)?chrom_exp_sign_param': [-1, 1],
-    '(.*_)?chrom_exp_alpha': [0, 7],
-    '(.*_)?chrom_1yr_log10_Amp': [-10, -4],
-    '(.*_)?chrom_1yr_phase': [0, 2 * np.pi],
-    '(.*_)?chrom_1yr_alpha': [0, 7],
-    '(.*_)?chrom_gauss_t0': [58525, 60700],
-    '(.*_)?chrom_gauss_log10_Amp': [-10, -4],
-    '(.*_)?chrom_gauss_log10_sigma': [0, 4],
-    '(.*_)?chrom_gauss_sign_param': [-1, 1],
-    '(.*_)?chrom_gauss_alpha': [0, 7],
-    r'(.*_)?timingmodel_coefficients\(\d+\)': [-20.0, 20.0],
-})
+def update_priordict_standard_mpta():
+    # Update the standard prior dictionary with PTA-specific parameters
+    prior.priordict_standard.update({
+        # White noise parameters
+        '(.*_)?efac':               [0.5, 2],
+        '(.*_)?log10_tnequad':      [-10, -5],
+        '(.*_)?log10_ecorr':        [-10, -5],
+        # Per-pulsar GW background parameters
+        '(.*_)?bkgrnd_log10_A':     [-18, -11],
+        # GP parameters
+        '(.*_)?red_noise_log10_A':  [-18, -11],
+        '(.*_)?red_noise_gamma':    [0, 7],
+        '(.*_)?dm_gp_log10_A':      [-18, -11],
+        '(.*_)?dm_gp_gamma':        [0, 7],
+        '(.*_)?chrom_gp_log10_A':   [-18, -11],
+        '(.*_)?chrom_gp_gamma':     [0, 7],
+        '(.*_)?chrom_gp_alpha':     [2.5, 14],
+        '(.*_)?sw_gp_log10_A':      [-10, -2],
+        '(.*_)?sw_gp_gamma':        [0, 4],
+        '(.*_)?band_gp_log10_A':    [-18, -11],
+        '(.*_)?band_gp_gamma':      [0, 7],
+        '(.*_)?band_gp_fcutoff':    [856, 1712], # MeerKAT L-band
+        '(.*_)?band_gp_flow':       [856, 1712], # MeerKAT L-band
+        '(.*_)?band_gp_fhigh':      [856, 1712], # MeerKAT L-band
+        '(.*_)?bandalpha_gp_log10_A':    [-18, -11],
+        '(.*_)?bandalpha_gp_gamma':      [0, 7],
+        '(.*_)?bandalpha_gp_alpha':      [0, 10],
+        '(.*_)?bandalpha_gp_fcutoff':    [856, 1712], # MeerKAT L-band
+        '(.*_)?bandalpha_gp_fhigh':    [856, 1712], # MeerKAT L-band 
+        '(.*_)?bandalpha_gp_flow':    [856, 1712], # MeerKAT L-band
+        # common noise parameters
+        'curn_log10_A':             [-18, -11],
+        'curn_gamma':               [0, 7],
+        # deterministic parameters
+        '(.*_)?chrom_exp_t0': [58525, 60700], # MPTA 6-yr range
+        '(.*_)?chrom_exp_log10_Amp': [-10, -4],
+        '(.*_)?chrom_exp_log10_tau': [0, 4],
+        '(.*_)?chrom_exp_sign_param': [-1, 1],
+        '(.*_)?chrom_exp_alpha': [0, 7],
+        '(.*_)?chrom_1yr_log10_Amp': [-10, -4],
+        '(.*_)?chrom_1yr_phase': [0, 2 * np.pi],
+        '(.*_)?chrom_1yr_alpha': [0, 7],
+        '(.*_)?chrom_gauss_t0': [58525, 60700], # MPTA 6-yr range
+        '(.*_)?chrom_gauss_log10_Amp': [-10, -4],
+        '(.*_)?chrom_gauss_log10_sigma': [0, 4],
+        '(.*_)?chrom_gauss_sign_param': [-1, 1],
+        '(.*_)?chrom_gauss_alpha': [0, 7],
+        r'(.*_)?timingmodel_coefficients\(\d+\)': [-20.0, 20.0],
+    })
+    return
+
+update_priordict_standard_mpta() # Ensure priordict_standard is updated on import, but also update when a model is created to catch any changes during likelihood/prior initialisation
 
 def gps2commongp(gps):
     priors = [gp.Phi.getN for gp in gps]
@@ -113,19 +118,23 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, background=True, red=True, dm=
 def make_common_gps_fourier(psrs, common_components=30, max_cadence_days=14, background=True, red=True, dm=True, chrom=True, sw=True, band=False, band_low=False, band_alpha=False):
     Tspan = signals.getspan(psrs)
     if not chrom and not band and not band_low and not band_alpha:  # Static Fs, so we can use gps2commongp
+       update_priordict_standard_mpta()
        return gps2commongp([matrix.CompoundGP(make_psr_gps_fourier(psr, max_cadence_days=max_cadence_days, background=background, red=red, dm=dm, chrom=False, sw=sw, band=False, band_low=False, band_alpha=False) +
                                               [signals.makegp_fourier(psr, signals.powerlaw, common_components, Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')])
                             for psr in psrs])
     else:
+        update_priordict_standard_mpta()
         return # Does not work yet
 
 def make_common_gps_fftint(psrs, common_knots=61, max_cadence_days=14, background=True, red=True, dm=True, chrom=True, sw=True, band=False, band_low=False, band_alpha=False):
     Tspan = signals.getspan(psrs)
     if not chrom and not band and not band_low and not band_alpha: # Static Fs, so we can use gps2commongp
+        update_priordict_standard_mpta()
         return gps2commongp([matrix.CompoundGP(make_psr_gps_fftint(psr, max_cadence_days=max_cadence_days, background=background, red=red, dm=dm, chrom=False, sw=sw, band=False, band_low=False, band_alpha=False) +
                                                [signals.makegp_fftcov(psr, signals.powerlaw, common_knots, Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')])
                             for psr in psrs]) # Does not work yet
     else:
+        update_priordict_standard_mpta()
         return # Does not work yet
 
 def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, tm_variable=False, timing_inds=None,
@@ -163,5 +172,6 @@ def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, tm_variable=False
     m.all_params.extend(comp_params)
     m.logL.params = sorted(set(m.all_params))
 
+    update_priordict_standard_mpta()
     return m
 
