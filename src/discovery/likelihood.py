@@ -149,8 +149,8 @@ class PulsarLikelihood:
         # if there's only one woodbury to do (N + T Phi T)
         # as opposed to (N + T Phi T + ... + T Phi T)
         if isinstance(self.N.N, matrix.NoiseMatrix):
+            ksolve = self.N.make_kernelsolve_simple(self.y)
             def cond(params):
-                ksolve = self.N.make_kernelsolve_simple(self.y)
                 mu, Sigma = ksolve(params)
                 return mu, matrix.jsp.linalg.cho_factor(Sigma, lower=True)
             cond.params = sorted(self.N.N.params + self.N.P_var.params)
@@ -207,7 +207,15 @@ class PulsarLikelihood:
     @functools.cached_property
     def sample(self):
         if callable(self.y):
-            print('Warning: delays are ignored in PulsarLikelihood.sample.')
+            noiseonly = self.N.make_sample()
+            delays = self.delay
+
+            def make_sample(key, params):
+                key, noise = noiseonly(key, params)
+                return key, noise + sum(delay(params) for delay in delays)
+            make_sample.params = sorted(set(noiseonly.params + sum([delay.params for delay in delays], [])))
+
+            return make_sample
 
         return self.N.make_sample()
 
