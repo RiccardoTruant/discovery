@@ -22,25 +22,34 @@ def residuals(psr):
 # EFAC/EQUAD/ECORR noise
 
 # no backends
-def makenoise_measurement_simple(psr, noisedict={}):
+def makenoise_measurement_simple(psr, noisedict={}, tnequad=False):
     efac = f'{psr.name}_efac'
-    log10_t2equad = f'{psr.name}_log10_t2equad'
-    params = [efac, log10_t2equad]
+    if tnequad:
+        log10_tnequad = f'{psr.name}_log10_tnequad'
+        params = [efac, log10_tnequad]
+    else:
+        log10_t2equad = f'{psr.name}_log10_t2equad'
+        params = [efac, log10_t2equad]
 
     if all(par in noisedict for par in params):
-        noise = noisedict[efac]**2 * (psr.toaerrs**2 + 10.0**(2.0 * noisedict[log10_t2equad]))
-
+        if tnequad:
+            noise = noisedict[efac]**2 * psr.toaerrs**2 + (10.0**(2.0 * noisedict[log10_tnequad]))
+        else:
+            noise = noisedict[efac]**2 * (psr.toaerrs**2 + 10.0**(2.0 * noisedict[log10_t2equad]))
         return matrix.NoiseMatrix1D_novar(noise)
     else:
         toaerrs = matrix.jnparray(psr.toaerrs)
-        def getnoise(params):
-            return params[efac]**2 * (toaerrs**2 + 10.0**(2.0 * params[log10_t2equad]))
+        def getnoise(params, tnequad=tnequad):
+            if tnequad:
+                return params[efac]**2 * toaerrs**2 + 10.0**(2.0 * params[log10_tnequad])
+            else:
+                return params[efac]**2 * (toaerrs**2 + 10.0**(2.0 * params[log10_t2equad]))
         getnoise.params = params
 
         return matrix.NoiseMatrix1D_var(getnoise)
 
 
-# nanograv backends
+# get pulsar backends
 def selection_backend_flags(psr):
     return psr.backend_flags
 
@@ -176,7 +185,7 @@ def makegp_ecorr_simple(psr, noisedict={}):
         ones = matrix.jnparray(ones)
         def getphi(params):
             return (10.0**(2.0 * params[log10_ecorr])) * ones
-        getphi.params = Params
+        getphi.params = params
 
         return matrix.VariableGP(matrix.NoiseMatrix1D_var(getphi), Umat)
 
