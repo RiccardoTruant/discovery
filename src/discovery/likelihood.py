@@ -4,7 +4,7 @@ import functools
 import numpy as np
 import jax
 
-from . import matrix
+from . import jnp, matrix
 from . import signals
 
 # import jax
@@ -334,23 +334,26 @@ class GlobalLikelihood:
 
                 Pinv, ldP = P_var_inv(params)
 
-                # for i, term in enumerate(terms):
-                #     Pinv = Pinv.at[i*ngp:(i+1)*ngp,i*ngp:(i+1)*ngp].add(term[2])
-                # cf = matrix.jsp.linalg.cho_factor(Pinv)
+                blocks = [matrix.jnp.asarray(term[2]) for term in terms]
 
-                # this seems a bit slower than the .at/.set scheme in plogL below
-                FtNmF = matrix.jsp.linalg.block_diag(*[term[2] for term in terms])
-                cf = matrix.jsp.linalg.cho_factor(Pinv + FtNmF)
+                sizes = [b.shape[0] for b in blocks]
+                total = int(sum(sizes))
+                FtNmF_global = matrix.jnp.zeros((total, total), dtype=blocks[0].dtype)
 
-                logp = p0 + 0.5 * (FtNmy.T @ matrix.jsp.linalg.cho_solve(cf, FtNmy) - ldP - 2.0 * matrix.jnp.sum(matrix.jnp.log(matrix.jnp.diag(cf[0]))))
+                offset = 0
+                for sz, b in zip(sizes, blocks):
+                    FtNmF_global = FtNmF_global.at[offset:offset+sz, offset:offset+sz].set(b)
+                    offset += int(sz)
+
+                cf = matrix.jsp.linalg.cho_factor(Pinv + FtNmF_global)
+
+                sol = matrix.jsp.linalg.cho_solve(cf, FtNmy)
+
+                logp = p0 + 0.5 * (FtNmy.T @ sol - ldP - 2.0 * matrix.jnp.sum(matrix.jnp.log(matrix.jnp.diag(cf[0]))))
 
                 if kmeans is not None:
-                    # -0.5 a0t.FtNmF.a0 + 0.5 a0t.FtNmF.Sm.FtNmF.a0 + a0t.FtNmy - a0t.FtNmF.Sm.FtNmy
-                    # -0.5 (a0t.FtNmF).a0 + (FtNmy)t.a0 + 0.5 (a0t.FtNmF).Sm.FtNmF.a0 - (FtNmy)t.Sm.FtNmF.a0
-                    # -0.5 (a0t.FtNmF).(a0 - Sm.FtNmF.a0) + (FtNmy)t.(a0 - Sm.FtNmF.a0)
-
                     a0 = kmeans(params)
-                    FtNmFa0 = FtNmF @ a0
+                    FtNmFa0 = FtNmF_global @ a0
                     logp = logp - (0.5 * FtNmFa0.T - FtNmy.T) @ (a0 - matrix.jsp.linalg.cho_solve(cf, FtNmFa0))
 
                 return logp
