@@ -23,7 +23,7 @@ def update_priordict_standard_ppta():
         '(.*_)?sw_gp_gamma':        [0, 4],
         '(.*_)?band_gp_log10_A':    [-18, -11],
         '(.*_)?band_gp_gamma':      [0, 7],
-        '(.*_)?band_gp_fcutoff':    [600, 4000], # PPTA full band
+        '(.*_)?band_low_gp_fcutoff':    [600, 4000], # PPTA full band
         '(.*_)?band_gp_flow':       [600, 4000], # PPTA full band
         '(.*_)?band_gp_fhigh':      [600, 4000], # PPTA full band
         '(.*_)?bandalpha_gp_log10_A':    [-18, -11],

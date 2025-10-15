@@ -37,7 +37,7 @@ def update_priordict_standard_mpta():
         '(.*_)?sw_gp_gamma':        [0, 4],
         '(.*_)?band_gp_log10_A':    [-18, -11],
         '(.*_)?band_gp_gamma':      [0, 7],
-        '(.*_)?band_gp_fcutoff':    [856, 1712], # MeerKAT L-band
+        '(.*_)?band_low_gp_fcutoff':    [856, 1712], # MeerKAT L-band
         '(.*_)?band_gp_flow':       [856, 1712], # MeerKAT L-band
         '(.*_)?band_gp_fhigh':      [856, 1712], # MeerKAT L-band
         '(.*_)?bandalpha_gp_log10_A':    [-18, -11],
@@ -101,7 +101,7 @@ def make_psr_gps_fourier(psr, max_cadence_days=14, Tspan=None, background=True, 
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=solar.fourierbasis_solar_dm, name='sw_gp')] if sw else []) + \
             ([signals.makegp_fourier(psr, signals.freespectrum, components=10, T=365.25*86400, fourierbasis=signals.fourierbasis_dm, name='dm_sw')] if dm_sw_free else []) + \
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_band_range, name='band_gp')] if band else []) + \
-            ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_band, name='band_gp')] if band_low else []) + \
+            ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_band, name='band_low_gp')] if band_low else []) + \
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_band_range_alpha, name='bandalpha_gp')] if band_alpha else []))
 
 
@@ -117,30 +117,9 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, Tspan=None, background=True, r
             ([signals.makegp_fftcov_solar(psr, signals.powerlaw, components=psr_knots, name='sw_gp')] if sw else []) + \
             ([signals.makegp_fftcov_dm(psr, signals.freespectrum, components=21, T=365.25*86400, name='dm_sw')] if dm_sw_free else []) + \
             ([signals.makegp_fftcov_band_range(psr, signals.powerlaw, components=psr_knots, name='band_gp')] if band else []) + \
-            ([signals.makegp_fftcov_band(psr, signals.powerlaw, components=psr_knots, name='band_gp')] if band_low else []) + \
+            ([signals.makegp_fftcov_band(psr, signals.powerlaw, components=psr_knots, name='band_low_gp')] if band_low else []) + \
             ([signals.makegp_fftcov_band_range_alpha(psr, signals.powerlaw, components=psr_knots, name='bandalpha_gp')] if band_alpha else []))
 
-def make_common_gps_fourier(psrs, common_components=30, max_cadence_days=14, background=True, red=True, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False):
-    Tspan = signals.getspan(psrs)
-    if not chrom and not band and not band_low and not band_alpha:  # Static Fs, so we can use gps2commongp
-       update_priordict_standard_mpta()
-       return gps2commongp([matrix.CompoundGP(make_psr_gps_fourier(psr, max_cadence_days=max_cadence_days, background=background, red=red, dm=dm, chrom=False, sw=sw, dm_sw_free=dm_sw_free, band=False, band_low=False, band_alpha=False) +
-                                              [signals.makegp_fourier(psr, signals.powerlaw, common_components, Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')])
-                            for psr in psrs])
-    else:
-        update_priordict_standard_mpta()
-        return # Does not work yet
-
-def make_common_gps_fftint(psrs, common_knots=61, max_cadence_days=14, background=True, red=True, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False):
-    Tspan = signals.getspan(psrs)
-    if not chrom and not band and not band_low and not band_alpha: # Static Fs, so we can use gps2commongp
-        update_priordict_standard_mpta()
-        return gps2commongp([matrix.CompoundGP(make_psr_gps_fftint(psr, max_cadence_days=max_cadence_days, background=background, red=red, dm=dm, chrom=False, sw=sw, dm_sw_free=dm_sw_free, band=False, band_low=False, band_alpha=False) +
-                                               [signals.makegp_fftcov(psr, signals.powerlaw, common_knots, Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')])
-                            for psr in psrs]) # Does not work yet
-    else:
-        update_priordict_standard_mpta()
-        return # Does not work yet
 
 def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, Tspan=None, noisedict={}, tm_variable=False, timing_inds=None, outliers=False, global_ecorr=False,
                         background=True, red=True, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False, # GP models
@@ -158,6 +137,7 @@ def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, Tspan=None, noise
     model_components += [signals.makegp_ecorr(psr, noisedict=noisedict)]
     if global_ecorr: # add an additional global ECORR term
         model_components += [signals.makegp_ecorr_simple(psr, noisedict=noisedict)]
+    # Add deterministic chromatic components
     if chrom_annual:
         model_components += [signals.makedelay(psr, deterministic.chromatic_annual(psr), name='chrom_1yr')]
     if chrom_exponential:
@@ -183,32 +163,37 @@ def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, Tspan=None, noise
 
 def common_noise(psrs, chain_dfs, fftInt=True, max_cadence_days=14, name="gw_crn"):
     # Accepts a list of pulsars and their corresponding chain dataframes and constructs an ArrayLikelihood
-    def get_noise(psrname, df, noise_string="red"):
-        return any(f"{psrname}_{noise_string}_" in col for col in list(df.columns))
-
+    def has_param(df, param_string="red_noise"):
+        return any(f"{param_string}" in col for col in list(df.columns))
+    
     Tspan = signals.getspan(psrs)
-    psr_components = int(Tspan / (max_cadence_days * 86400))
-    psr_knots = 2 * psr_components + 1
+    common_components = int(Tspan / (max_cadence_days * 86400))
+    common_knots = 2 * common_components + 1
 
-    psl_models = []
+    psls = []
 
     for psr, df in zip(psrs, chain_dfs):
-        m = single_pulsar_noise(psr, fftint=fftInt, max_cadence_days=max_cadence_days, Tspan=Tspan, background=False,
-                                red=get_noise(psr.name, df, "red"), dm=get_noise(psr.name, df, "dm_gp"), chrom=get_noise(psr.name, df, "chrom_gp"),
-                                sw=get_noise(psr.name, df, "sw_gp"), band=get_noise(psr.name, df, "band_gp"), 
-                                band_low=get_noise(psr.name, df, "band_low_gp"), band_alpha=get_noise(psr.name, df, "bandalpha_gp"))
-        psl_models.append(m)
+        if not any(psr.name in col for col in df.columns):
+            raise ValueError("Chain data frames do not match pulsar names") 
+        # Get max-likelihood parameters for this pulsar
+        noisedict = {}
+        for col in df.columns:
+            ml_idx = df['logl'].idxmax()
+            noisedict[col] = df.loc[ml_idx, col]
+        # background = False, as we are including a common red noise process
+        m = single_pulsar_noise(psr, fftint=fftInt, max_cadence_days=max_cadence_days, Tspan=None, background=False, noisedict=noisedict, global_ecorr=has_param(df, f"{psr.name}_ecorr"),
+                                red=has_param(df, "red_noise"), dm=has_param(df, "dm_gp"), chrom=has_param(df, "chrom_gp"), sw=has_param(df, "sw_gp"), 
+                                band=has_param(df, "band_gp"), band_low=has_param(df, "band_low_gp"), band_alpha=has_param(df, "bandalpha_gp"),
+                                dm_sw_free=has_param(df, "dm_sw"), chrom_annual=has_param(df, "chrom_1yr"), chrom_exponential=has_param(df, "chrom_exp"), chrom_gaussian=has_param(df, "chrom_gauss"))
+        print("Including pulsar", psr.name, "with model parameters:\n", m.logL.params)
+        psls.append(m)
+
+    if not fftInt:
+        curn = signals.makecommongp_fourier(psrs, prior=signals.powerlaw, components=common_components, T=Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')
+        return likelihood.GlobalLikelihood(psls, globalgp=curn)
+        # return likelihood.ArrayLikelihood(psls, commongp=curn)
     
-
-    if use_array:
-        if fftInt:
-            comm_gp = make_common_gps_fftint(psrs, chain_dfs, Ncommon=Ncommon, max_cadence=max_cadence, name=name)
-        else:
-            comm_gp = make_common_gps_fourier(psrs, chain_dfs, Ncommon=Ncommon, name=name)
-
-        for psr, df in zip(psrs, chain_dfs):
-            comps = [psr.residuals, signals.makenoise_measurement(psr, psr.noisedict), signals.makegp_timing(psr)]
-            comps.append(signals.makegp_ecorr(psr, psr.noisedict))
-            psl_models.append(likelihood.PulsarLikelihood(comps))
-
-        return likelihood.ArrayLikelihood(psl_models, commongp=comm_gp)
+    else:
+        curn = signals.makecommongp_fftcov(psrs, prior=signals.powerlaw, components=common_knots, T=Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')
+        return likelihood.GlobalLikelihood(psls, globalgp=curn)
+        # return likelihood.ArrayLikelihood(psls, commongp=curn)

@@ -155,7 +155,7 @@ class PulsarLikelihood:
                 return mu, matrix.jsp.linalg.cho_factor(Sigma, lower=True)
             cond.params = sorted(self.N.N.params + self.N.P_var.params)
             return cond
-        P_var_inv = self.N.P_var.Phi_inv or self.N.P_var.make_inv()
+        P_var_inv = getattr(self.N.P_var, "Phi_inv", None) or self.N.P_var.make_inv()
 
         ksolve = self.N.N.make_kernelsolve(self.y, self.N.F)
 
@@ -263,11 +263,17 @@ class GlobalLikelihood:
                     'In that case you can use a list.')
 
             Phi_sample = self.globalgp.Phi.make_sample()
+            Fs = getattr(self.globalgp, "Fs", None)
+            if Fs is None:
+                F = getattr(self.globalgp, "F", None)
+                if F is None:
+                    raise AttributeError("globalgp must carry 'Fs' or 'F'.")
+                Fs = F if isinstance(F, (list, tuple)) else [F] * len(self.psls)
 
-            Fs = [matrix.jnparray(F) for F in self.globalgp.Fs]
+            Fs = [matrix.jnparray(F) for F in Fs]
 
             i0, slcs = 0, []
-            for F in self.globalgp.Fs:
+            for F in Fs:
                 slcs.append(slice(i0, i0 + F.shape[1]))
                 i0 = i0 + F.shape[1]
 
@@ -300,8 +306,15 @@ class GlobalLikelihood:
 
             loglike.params = sorted(set.union(*[set(logl.params) for logl in logls]))
         else:
-            P_var_inv = self.globalgp.Phi_inv or self.globalgp.Phi.make_inv()
-            kterms = [psl.N.make_kernelterms(psl.y, Fmat) for psl, Fmat in zip(self.psls, self.globalgp.Fs)]
+            P_var_inv = getattr(self.globalgp, "Phi_inv", None) or self.globalgp.Phi.make_inv()
+            Fs = getattr(self.globalgp, "Fs", None)
+            if Fs is None:
+                F = getattr(self.globalgp, "F", None)
+                if F is None:
+                    raise AttributeError("globalgp must carry 'Fs' or 'F'.")
+                Fs = F if isinstance(F, (list, tuple)) else [F] * len(self.psls)
+
+            kterms = [psl.N.make_kernelterms(psl.y, Fmat) for psl, Fmat in zip(self.psls, Fs)]
 
             if len(kterms) == 0:
                 raise ValueError('No PulsarLikelihoods in GlobalLikelihood: ' +
@@ -372,14 +385,20 @@ class GlobalLikelihood:
             loglike.params = sorted(set([p for l in mpicomm.allgather(local_list) for p in l]))
         else:
             # handle the case where there are more matrices in self.globalgp than likelihoods
-            Fmats = {name: Fmat for name, Fmat in zip(self.globalgp.name, self.globalgp.Fs)}
+            Fs = getattr(self.globalgp, "Fs", None)
+            if Fs is None:
+                F = getattr(self.globalgp, "F", None)
+                if F is None:
+                    raise AttributeError("globalgp must carry 'Fs' or 'F'.")
+                Fs = F if isinstance(F, (list, tuple)) else [F] * len(self.psls)
+            Fmats = {name: Fmat for name, Fmat in zip(self.globalgp.name, Fs)}
             kterms = [psl.N.make_kernelterms(psl.y, Fmats[psl.name]) for psl in self.psls]
 
             if rank == 0:
-                npsr = len(self.globalgp.Fs)
-                ngp = self.globalgp.Fs[0].shape[1]
+                npsr = len(Fs)
+                ngp = Fs[0].shape[1]
 
-                P_var_inv = self.globalgp.Phi_inv or self.globalgp.Phi.make_inv()
+                P_var_inv = getattr(self.globalgp, "Phi_inv", None) or self.globalgp.Phi.make_inv()
 
                 def loglike(params):
                     b0 = matrix.jnp.zeros((size,), dtype=matrix.jnp.float64)
@@ -453,10 +472,16 @@ class GlobalLikelihood:
         if self.globalgp is None:
             raise ValueError("Nothing to predict in GlobalLikelihood without a globalgp!")
         else:
-            P_var_inv = self.globalgp.Phi_inv or self.globalgp.Phi.make_inv()
+            P_var_inv = getattr(self.globalgp, "Phi_inv", None) or self.globalgp.Phi.make_inv()
             ndim = 1 if isinstance(self.globalgp.Phi, matrix.NoiseMatrix1D_var) else 2
+            Fs = getattr(self.globalgp, "Fs", None)
+            if Fs is None:
+                F = getattr(self.globalgp, "F", None)
+                if F is None:
+                    raise AttributeError("globalgp must carry 'Fs' or 'F'.")
+                Fs = F if isinstance(F, (list, tuple)) else [F] * len(self.psls)
 
-            ksolves = [psl.N.make_kernelsolve(psl.y, Fmat) for psl, Fmat in zip(self.psls, self.globalgp.Fs)]
+            ksolves = [psl.N.make_kernelsolve(psl.y, Fmat) for psl, Fmat in zip(self.psls, Fs)]
 
             if len(ksolves) == 0:
                 raise ValueError('No PulsarLikelihoods in GlobalLikelihood: ' +
@@ -592,11 +617,17 @@ class ArrayLikelihood:
             print("Got", self.vsm.means)
             loglike = self.vsm.make_kernelproduct(self.ys)
         else:
-            P_var_inv = self.globalgp.Phi_inv or self.globalgp.Phi.make_inv()
-            kterms = self.vsm.make_kernelterms(self.ys, self.globalgp.Fs)
+            P_var_inv = getattr(self.globalgp, "Phi_inv", None) or self.globalgp.Phi.make_inv()
+            Fs = getattr(self.globalgp, "Fs", None)
+            if Fs is None:
+                F = getattr(self.globalgp, "F", None)
+                if F is None:
+                    raise AttributeError("globalgp must carry 'Fs' or 'F'.")
+                Fs = F if isinstance(F, (list, tuple)) else [F] * len(self.psls)
+            kterms = self.vsm.make_kernelterms(self.ys, Fs)
 
-            npsr = len(self.globalgp.Fs)
-            ngp = self.globalgp.Fs[0].shape[1]
+            npsr = len(Fs)
+            ngp = Fs[0].shape[1]
 
             kmeans = getattr(self.globalgp, 'means', None)
 
@@ -649,10 +680,16 @@ class ArrayLikelihood:
             loglike = self.vsm.make_kernelproduct(self.ys)
         else:
             factors = self.globalgp.factors
-            kterms = self.vsm.make_kernelterms(self.ys, self.globalgp.Fs)
+            Fs = getattr(self.globalgp, "Fs", None)
+            if Fs is None:
+                F = getattr(self.globalgp, "F", None)
+                if F is None:
+                    raise AttributeError("globalgp must carry 'Fs' or 'F'.")
+                Fs = F if isinstance(F, (list, tuple)) else [F] * len(self.psls)
+            kterms = self.vsm.make_kernelterms(self.ys, Fs)
 
-            npsr = len(self.globalgp.Fs)
-            ngp = self.globalgp.Fs[0].shape[1]
+            npsr = len(Fs)
+            ngp = Fs[0].shape[1]
 
             logdet_estimator = matrix.make_logdet_estimator(npsr * ngp, detmatvecs, detsamples, clip)
             rndkey = jax.random.PRNGKey(1)
