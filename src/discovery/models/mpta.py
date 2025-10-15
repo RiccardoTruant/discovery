@@ -178,7 +178,7 @@ def common_noise(psrs, chain_dfs, fftInt=True, max_cadence_days=14, name="gw_crn
         # Get max-likelihood parameters for this pulsar
         ml_idx = df['logl'].idxmax()
         noisedict = {col: df.loc[ml_idx, col] for col in df.columns if col.startswith(psr.name)}
-        
+
         # background = False, as we are including a common red noise process
         #m = single_pulsar_noise(psr, fftint=fftInt, max_cadence_days=max_cadence_days, Tspan=None, background=False, noisedict=noisedict, global_ecorr=has_param(df, f"{psr.name}_ecorr"),
         #                        red=has_param(df, "red_noise"), dm=has_param(df, "dm_gp"), chrom=has_param(df, "chrom_gp"), sw=has_param(df, "sw_gp"), 
@@ -186,7 +186,7 @@ def common_noise(psrs, chain_dfs, fftInt=True, max_cadence_days=14, name="gw_crn
         #                        dm_sw_free=has_param(df, "dm_sw"), chrom_annual=has_param(df, "chrom_1yr"), chrom_exponential=has_param(df, "chrom_exp"), chrom_gaussian=has_param(df, "chrom_gauss"))
         
         m = single_pulsar_noise(psr, fftint=fftInt, max_cadence_days=max_cadence_days, Tspan=None, background=False, noisedict=noisedict, global_ecorr=False,
-                                red=True, dm=False, chrom=False, sw=False, band=False, band_low=False, band_alpha=False,
+                                red=True, dm=True, chrom=False, sw=False, band=False, band_low=False, band_alpha=False,
                                 dm_sw_free=False, chrom_annual=False, chrom_exponential=False, chrom_gaussian=False) # Simplified model for testing
         
         # print("Including pulsar", psr.name, "with model parameters:\n", m.logL.params)
