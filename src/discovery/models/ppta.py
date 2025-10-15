@@ -51,6 +51,7 @@ def update_priordict_standard_ppta():
         '(.*_)?chrom_gauss_alpha': [0, 7],
         r'(.*_)?timingmodel_coefficients\(\d+\)': [-20.0, 20.0],
         r'(.*_)?dm_sw_log10_rho\(\d+\)': [-10, 4],
+        r'(.*_)?alpha_scaling\(\d+\)': [0.0, 100.0],
     })
     return
 

@@ -69,10 +69,11 @@ def makesampler_nuts(numpyro_model, num_warmup=512, num_samples=1024, num_chains
     def _make_plots(save_name=None, diagnostics=False):
         import matplotlib.pyplot as plt
         import corner
+        import re
 
         df = sampler.to_df()
-        reserved = {'logl'}
-        labels = [c for c in df.columns if c not in reserved]
+        reserved = [r'^logl$', r'(.*_)?alpha_scaling\(\d+\)$'] # don't plot likelihood or outlier parameters
+        labels = [c for c in df.columns if not any(re.match(r, c) for r in reserved)]
         data = df[labels].values
 
         fig = corner.corner(
