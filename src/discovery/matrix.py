@@ -1092,7 +1092,97 @@ class WoodburyKernel_varFP(VariableKernel):
 
         return kernelproduct
 
+    def make_kernelsolve(self, y, T):
+        N = self.N
+        P_var_inv = self.P_var.make_inv()
 
+        y_is_callable = callable(y)
+        if not y_is_callable:
+            y = jnparray(y)
+            Nmy_fixed, _ = N.solve_1d(y) if y.ndim == 1 else N.solve_2d(y)
+            TtNmy_cached = T.T @ Nmy_fixed  # cached
+
+        T = jnparray(T)
+
+        def kernelsolve(params):
+            F = self.F(params)
+            NmF, _ = N.solve_2d(F)
+            FtNmF  = F.T @ NmF
+            TtNmF  = T.T @ NmF
+
+            NmT, _ = N.solve_2d(T)
+            FtNmT  = F.T @ NmT
+            TtNmT  = T.T @ NmT
+
+            if y_is_callable:
+                yp = y(params)
+                Nmy, _ = N.solve_1d(yp) if yp.ndim == 1 else N.solve_2d(yp)
+                FtNmy  = F.T @ Nmy
+                TtNmy  = T.T @ Nmy
+            else:
+                FtNmy = NmF.T @ y
+                TtNmy = TtNmy_cached
+
+            Pinv, _ = P_var_inv(params)
+            cf = matrix_factor(Pinv + FtNmF)
+
+            TtSy = TtNmy - TtNmF @ matrix_solve(cf, FtNmy)
+            TtST = TtNmT - TtNmF @ matrix_solve(cf, FtNmT)
+            return TtSy, TtST
+
+        kernelsolve.params = sorted(P_var_inv.params + (y.params if y_is_callable else [] ) + self.F.params)
+        return kernelsolve
+
+    def make_kernelterms(self, y, T):
+        N = self.N
+        P_var_inv = self.P_var.make_inv()
+        T = jnparray(T)
+
+        y_is_callable = callable(y)
+        if not y_is_callable:
+            y = jnparray(y)
+            Nmy_fixed, ldN_fixed = N.solve_1d(y)
+            ytNmy_fixed = y @ Nmy_fixed
+            TtNmy_cached = T.T @ Nmy_fixed
+
+        def kernelterms(params):
+            F = self.F(params)
+            NmF, ldN_here = N.solve_2d(F)
+            FtNmF  = F.T @ NmF
+            TtNmF  = T.T @ NmF
+
+            NmT, _ = N.solve_2d(T)
+            FtNmT  = F.T @ NmT
+            TtNmT  = T.T @ NmT
+
+            if y_is_callable:
+                yp = y(params)
+                Nmy, ldN_dyn = N.solve_1d(yp)
+                ytNmy = yp @ Nmy
+                FtNmy = F.T @ Nmy
+                TtNmy = T.T @ Nmy
+                ldN = ldN_dyn
+            else:
+                FtNmy = NmF.T @ y
+                TtNmy = TtNmy_cached
+                ytNmy = ytNmy_fixed
+                ldN   = ldN_fixed
+
+            Pinv, ldP = P_var_inv(params)
+            cf = matrix_factor(Pinv + FtNmF)
+
+            sol  = matrix_solve(cf, FtNmy)
+            sol2 = matrix_solve(cf, FtNmT)
+
+            a = -0.5 * (ytNmy - FtNmy.T @ sol) - 0.5 * (ldN + ldP + matrix_norm * jnp.logdet(jnp.diag(cf[0])))
+            b = TtNmy - TtNmF @ sol
+            c = TtNmT - TtNmF @ sol2
+            return a, b, c
+
+        kernelterms.params = sorted(self.F.params + P_var_inv.params + (y.params if y_is_callable else []))
+        return kernelterms
+
+        
 class WoodburyKernel_varNP(VariableKernel):
     def __init__(self, N_var, F, P_var):
         self.N, self.F, self.P_var = N_var, F, P_var
