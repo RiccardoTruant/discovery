@@ -30,6 +30,8 @@ def makenoise_measurement_simple(psr, noisedict={}, add_equad=True, tnequad=Fals
     elif add_equad:
         log10_t2equad = f'{psr.name}_log10_t2equad'
         params = [efac, log10_t2equad]
+    else:
+        params = [efac]
 
     if all(par in noisedict for par in params):
         if tnequad and add_equad:
