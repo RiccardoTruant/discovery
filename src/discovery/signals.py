@@ -22,28 +22,32 @@ def residuals(psr):
 # EFAC/EQUAD/ECORR noise
 
 # no backends
-def makenoise_measurement_simple(psr, noisedict={}, tnequad=False):
+def makenoise_measurement_simple(psr, noisedict={}, add_equad=True, tnequad=False):
     efac = f'{psr.name}_efac'
-    if tnequad:
+    if tnequad and add_equad:
         log10_tnequad = f'{psr.name}_log10_tnequad'
         params = [efac, log10_tnequad]
-    else:
+    elif add_equad:
         log10_t2equad = f'{psr.name}_log10_t2equad'
         params = [efac, log10_t2equad]
 
     if all(par in noisedict for par in params):
-        if tnequad:
+        if tnequad and add_equad:
             noise = noisedict[efac]**2 * psr.toaerrs**2 + (10.0**(2.0 * noisedict[log10_tnequad]))
-        else:
+        elif add_equad:
             noise = noisedict[efac]**2 * (psr.toaerrs**2 + 10.0**(2.0 * noisedict[log10_t2equad]))
+        else: 
+            noise = noisedict[efac]**2 * psr.toaerrs**2
         return matrix.NoiseMatrix1D_novar(noise)
     else:
         toaerrs = matrix.jnparray(psr.toaerrs)
         def getnoise(params, tnequad=tnequad):
-            if tnequad:
+            if tnequad and add_equad:
                 return params[efac]**2 * toaerrs**2 + 10.0**(2.0 * params[log10_tnequad])
-            else:
+            elif add_equad:
                 return params[efac]**2 * (toaerrs**2 + 10.0**(2.0 * params[log10_t2equad]))
+            else:
+                return params[efac]**2 * toaerrs**2
         getnoise.params = params
 
         return matrix.NoiseMatrix1D_var(getnoise)
