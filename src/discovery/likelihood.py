@@ -334,27 +334,33 @@ class GlobalLikelihood:
 
                 Pinv, ldP = P_var_inv(params)
 
+                # Add per-pulsar blocks directly into Pinv (avoids building full FtNmF_global)
                 blocks = [matrix.jnp.asarray(term[2]) for term in terms]
-
                 sizes = [b.shape[0] for b in blocks]
-                total = int(sum(sizes))
-                FtNmF_global = matrix.jnp.zeros((total, total), dtype=blocks[0].dtype)
-
+                Pinv_plus = Pinv
                 offset = 0
                 for sz, b in zip(sizes, blocks):
-                    FtNmF_global = FtNmF_global.at[offset:offset+sz, offset:offset+sz].set(b)
-                    offset += int(sz)
+                    s, e = offset, offset + sz
+                    Pinv_plus = Pinv_plus.at[s:e, s:e].add(b)
+                    offset = e
 
-                cf = matrix.jsp.linalg.cho_factor(Pinv + FtNmF_global)
-
+                cf = matrix.jsp.linalg.cho_factor(Pinv_plus)
                 sol = matrix.jsp.linalg.cho_solve(cf, FtNmy)
-
                 logp = p0 + 0.5 * (FtNmy.T @ sol - ldP - 2.0 * matrix.jnp.sum(matrix.jnp.log(matrix.jnp.diag(cf[0]))))
 
                 if kmeans is not None:
                     a0 = kmeans(params)
-                    FtNmFa0 = FtNmF_global @ a0
-                    logp = logp - (0.5 * FtNmFa0.T - FtNmy.T) @ (a0 - matrix.jsp.linalg.cho_solve(cf, FtNmFa0))
+                    # Compute FtNmF @ a0 block-wise (concatenate per-block results)
+                    offset = 0
+                    parts = []
+                    for sz, b in zip(sizes, blocks):
+                        s, e = offset, offset + sz
+                        a_seg = a0[s:e]
+                        parts.append(b @ a_seg)
+                        offset = e
+                    FtNmFa0 = matrix.jnp.concatenate(parts)
+                    correction = a0 - matrix.jsp.linalg.cho_solve(cf, FtNmFa0)
+                    logp = logp - (0.5 * FtNmFa0.T - FtNmy.T) @ correction
 
                 return logp
 

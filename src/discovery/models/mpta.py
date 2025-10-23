@@ -161,7 +161,7 @@ def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, Tspan=None, noise
 
     return m
 
-def common_noise(psrs, chain_dfs, fftInt=True, max_cadence_days=14, name="gw_crn"):
+def common_noise(psrs, chain_dfs, fftInt=False, max_cadence_days=14, name="gw_crn"):
     # Accepts a list of pulsars and their corresponding chain dataframes and constructs an ArrayLikelihood
     def has_param(df, param_string="red_noise"):
         return any(f"{param_string}" in col for col in list(df.columns))
@@ -189,15 +189,15 @@ def common_noise(psrs, chain_dfs, fftInt=True, max_cadence_days=14, name="gw_crn
                                 red=True, dm=True, chrom=False, sw=False, band=False, band_low=False, band_alpha=False,
                                 dm_sw_free=False, chrom_annual=False, chrom_exponential=False, chrom_gaussian=False) # Simplified model for testing
         
-        # print("Including pulsar", psr.name, "with model parameters:\n", m.logL.params)
+        print("Including pulsar", psr.name, "with model parameters:\n", m.logL.params)
         psls.append(m)
 
     if not fftInt:
-        curn = signals.makecommongp_fourier(psrs, prior=signals.powerlaw, components=common_components, T=Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')
+        curn = signals.makeglobalgp_fourier(psrs, signals.powerlaw, signals.uncorrelated_orf, common_components, Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')
         return likelihood.GlobalLikelihood(psls, globalgp=curn)
         # return likelihood.ArrayLikelihood(psls, commongp=curn)
     
     else:
-        curn = signals.makecommongp_fftcov(psrs, prior=signals.powerlaw, components=common_knots, T=Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')
+        curn = signals.makeglobalgp_fftcov(psrs, signals.powerlaw, signals.uncorrelated_orf, common_knots, Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')
         return likelihood.GlobalLikelihood(psls, globalgp=curn)
         # return likelihood.ArrayLikelihood(psls, commongp=curn)
