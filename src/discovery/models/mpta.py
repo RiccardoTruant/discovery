@@ -44,7 +44,7 @@ def update_priordict_standard_mpta():
         '(.*_)?bandalpha_gp_gamma':      [0, 7],
         '(.*_)?bandalpha_gp_alpha':      [0, 10],
         '(.*_)?bandalpha_gp_fcutoff':    [856, 1712], # MeerKAT L-band
-        '(.*_)?bandalpha_gp_fhigh':    [856, 1712], # MeerKAT L-band 
+        '(.*_)?bandalpha_gp_fhigh':    [856, 1712], # MeerKAT L-band
         '(.*_)?bandalpha_gp_flow':    [856, 1712], # MeerKAT L-band
         # common noise parameters
         'curn_log10_A':             [-18, -11],
@@ -127,7 +127,7 @@ def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, Tspan=None, noise
     # Set up per-backend white noise
     measurement_noise = signals.makenoise_measurement(psr, tnequad=True, noisedict=noisedict, outliers=outliers)
     # Set up timing model
-    tm = signals.makegp_timing(psr, svd=True, variable=tm_variable, timing_inds=timing_inds)  
+    tm = signals.makegp_timing(psr, svd=True, variable=tm_variable, timing_inds=timing_inds)
     if not isinstance(tm, list): # ensure the timing model is unpacked if returning a list
         tm = [tm]
     # Set up model components
@@ -165,7 +165,7 @@ def common_noise(psrs, chain_dfs, fftInt=False, max_cadence_days=14, name="gw_cr
     # Accepts a list of pulsars and their corresponding chain dataframes and constructs an ArrayLikelihood
     def has_param(df, param_string="red_noise"):
         return any(f"{param_string}" in col for col in list(df.columns))
-    
+
     Tspan = signals.getspan(psrs)
     common_components = int(Tspan / (max_cadence_days * 86400))
     common_knots = 2 * common_components + 1
@@ -174,21 +174,21 @@ def common_noise(psrs, chain_dfs, fftInt=False, max_cadence_days=14, name="gw_cr
 
     for psr, df in zip(psrs, chain_dfs):
         if not any(psr.name in col for col in df.columns):
-            raise ValueError("Chain data frames do not match pulsar names") 
+            raise ValueError("Chain data frames do not match pulsar names")
         # Get max-likelihood parameters for this pulsar
         ml_idx = df['logl'].idxmax()
         noisedict = {col: df.loc[ml_idx, col] for col in df.columns if col.startswith(psr.name)}
 
         # background = False, as we are including a common red noise process
         #m = single_pulsar_noise(psr, fftint=fftInt, max_cadence_days=max_cadence_days, Tspan=None, background=False, noisedict=noisedict, global_ecorr=has_param(df, f"{psr.name}_ecorr"),
-        #                        red=has_param(df, "red_noise"), dm=has_param(df, "dm_gp"), chrom=has_param(df, "chrom_gp"), sw=has_param(df, "sw_gp"), 
+        #                        red=has_param(df, "red_noise"), dm=has_param(df, "dm_gp"), chrom=has_param(df, "chrom_gp"), sw=has_param(df, "sw_gp"),
         #                        band=has_param(df, "band_gp"), band_low=has_param(df, "band_low_gp"), band_alpha=has_param(df, "bandalpha_gp"),
         #                        dm_sw_free=has_param(df, "dm_sw"), chrom_annual=has_param(df, "chrom_1yr"), chrom_exponential=has_param(df, "chrom_exp"), chrom_gaussian=has_param(df, "chrom_gauss"))
-        
+
         m = single_pulsar_noise(psr, fftint=fftInt, max_cadence_days=max_cadence_days, Tspan=None, background=False, noisedict=noisedict, global_ecorr=False,
-                                red=True, dm=True, chrom=False, sw=False, band=False, band_low=False, band_alpha=False,
+                                red=True, dm=True, chrom=True, sw=False, band=False, band_low=False, band_alpha=False,
                                 dm_sw_free=False, chrom_annual=False, chrom_exponential=False, chrom_gaussian=False) # Simplified model for testing
-        
+
         print("Including pulsar", psr.name, "with model parameters:\n", m.logL.params)
         psls.append(m)
 
@@ -196,7 +196,7 @@ def common_noise(psrs, chain_dfs, fftInt=False, max_cadence_days=14, name="gw_cr
         curn = signals.makeglobalgp_fourier(psrs, signals.powerlaw, signals.uncorrelated_orf, common_components, Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')
         return likelihood.GlobalLikelihood(psls, globalgp=curn)
         # return likelihood.ArrayLikelihood(psls, commongp=curn)
-    
+
     else:
         curn = signals.makeglobalgp_fftcov(psrs, signals.powerlaw, signals.uncorrelated_orf, common_knots, Tspan, common=['curn_log10_A', 'curn_gamma'], name='curn')
         return likelihood.GlobalLikelihood(psls, globalgp=curn)

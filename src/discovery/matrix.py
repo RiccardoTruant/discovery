@@ -882,6 +882,7 @@ class WoodburyKernel_novar(ConstantKernel):
     def __init__(self, N, F, P):
         # (N + F P F^T)^-1 = N^-1 - N^-1 F (P^-1 + F^T N^-1 F)^-1 F^T N^-1
         # |N + F P F^T| = |N| |P| |P^-1 + F^T N^-1 F|
+        print("WoodburyKernel_novar initialized")
 
         self.N, self.F, self.P = N, F, P
         self.NmF, ldN = N.solve_2d(F)
@@ -1066,10 +1067,12 @@ class WoodburyKernel_novar(ConstantKernel):
 
 class WoodburyKernel_varFP(VariableKernel):
     def __init__(self, N, F_var, P_var):
+        print("WoodburyKernel_varFP initialized")
         self.N, self.F, self.P_var = N, F_var, P_var
 
     def make_kernelproduct(self, y):
-        Nmy, _  = self.N.solve_1d(y)
+        N_solve_1d = self.N.make_solve_1d()
+        Nmy, _  = N_solve_1d(y)
         ytNmy = y @ Nmy
 
         y, ytNmy = jnparray(y), jnparray(ytNmy)
@@ -1095,28 +1098,30 @@ class WoodburyKernel_varFP(VariableKernel):
     def make_kernelsolve(self, y, T):
         N = self.N
         P_var_inv = self.P_var.make_inv()
+        N_solve_1d = self.N.make_solve_1d()
+        N_solve_2d = self.N.make_solve_2d()
 
         y_is_callable = callable(y)
         if not y_is_callable:
             y = jnparray(y)
-            Nmy_fixed, _ = N.solve_1d(y) if y.ndim == 1 else N.solve_2d(y)
+            Nmy_fixed, _ = N_solve_1d(y) if y.ndim == 1 else N_solve_2d(y)
             TtNmy_cached = T.T @ Nmy_fixed  # cached
 
         T = jnparray(T)
 
         def kernelsolve(params):
             F = self.F(params)
-            NmF, _ = N.solve_2d(F)
+            NmF, _ = N_solve_2d(F)
             FtNmF  = F.T @ NmF
             TtNmF  = T.T @ NmF
 
-            NmT, _ = N.solve_2d(T)
+            NmT, _ = N_solve_2d(T)
             FtNmT  = F.T @ NmT
             TtNmT  = T.T @ NmT
 
             if y_is_callable:
                 yp = y(params)
-                Nmy, _ = N.solve_1d(yp) if yp.ndim == 1 else N.solve_2d(yp)
+                Nmy, _ = N_solve_1d(yp) if yp.ndim == 1 else N_solve_2d(yp)
                 FtNmy  = F.T @ Nmy
                 TtNmy  = T.T @ Nmy
             else:
@@ -1141,23 +1146,25 @@ class WoodburyKernel_varFP(VariableKernel):
         y_is_callable = callable(y)
         if not y_is_callable:
             y = jnparray(y)
-            Nmy_fixed, ldN_fixed = N.solve_1d(y)
+            N_solve_1d = self.N.make_solve_1d()
+            Nmy_fixed, ldN_fixed = N_solve_1d(y)
             ytNmy_fixed = y @ Nmy_fixed
             TtNmy_cached = T.T @ Nmy_fixed
 
         def kernelterms(params):
             F = self.F(params)
-            NmF, ldN_here = N.solve_2d(F)
+            N_solve_2d = self.N.make_solve_2d()
+            NmF, ldN_here = N_solve_2d(F)
             FtNmF  = F.T @ NmF
             TtNmF  = T.T @ NmF
 
-            NmT, _ = N.solve_2d(T)
+            NmT, _ = N_solve_2d(T)
             FtNmT  = F.T @ NmT
             TtNmT  = T.T @ NmT
 
             if y_is_callable:
                 yp = y(params)
-                Nmy, ldN_dyn = N.solve_1d(yp)
+                Nmy, ldN_dyn = N_solve_1d(yp)
                 ytNmy = yp @ Nmy
                 FtNmy = F.T @ Nmy
                 TtNmy = T.T @ Nmy
@@ -1185,6 +1192,7 @@ class WoodburyKernel_varFP(VariableKernel):
 
 class WoodburyKernel_varNP(VariableKernel):
     def __init__(self, N_var, F, P_var):
+        print("WoodburyKernel_varNP initialized")
         self.N, self.F, self.P_var = N_var, F, P_var
 
     def make_kernelproduct(self, y):
@@ -1307,6 +1315,7 @@ class WoodburyKernel_varNP(VariableKernel):
 
 class WoodburyKernel_varP(VariableKernel):
     def __init__(self, N, F, P_var):
+        print("WoodburyKernel_varP initialized")
         self.N, self.F, self.P_var = N, F, P_var
 
     def make_sample(self):
@@ -1610,6 +1619,7 @@ class WoodburyKernel_varP(VariableKernel):
 
 class WoodburyKernel_varN(VariableKernel):
     def __init__(self, N_var, F, P):
+        print("WoodburyKernel_varN initialized")
         self.N_var, self.F, self.P = N_var, F, P
         self.Pinv, self.ldP = P.inv()
         self.params = N_var.params
