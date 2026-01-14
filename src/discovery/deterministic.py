@@ -192,3 +192,14 @@ def chromatic_gaussian(psr, fref=1400.0):
         return jnp.sign(sign_param) * 10**log10_Amp * jnp.exp(-(toas - t0)**2 / (2 * (10**log10_sigma)**2)) * fnorm**alpha
 
     return delay
+
+def orthometric_shapiro(psr, binphase):
+    """Orthometric Shapiro delay model from Freire & Wex (2010)."""
+    toas, binphase = matrix.jnparray(psr.toas / const.day), matrix.jnparray(binphase)
+    if not np.shape(binphase) == np.shape(toas):
+        raise ValueError("Input binphase must have the same shape as toas")
+
+    def delay(h3, stig):
+        return -(2.0 * h3 / stig**3) * jnp.log(1 + stig**2 - 2 * stig * jnp.sin(binphase))
+
+    return delay

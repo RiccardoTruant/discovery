@@ -981,11 +981,8 @@ def makeglobalgp_intcov(psr, prior, orf, components, T, timeinterpbasis=timeinte
 def powerlaw(f, df, log10_A, gamma):
     return (10.0**(2.0 * log10_A)) / 12.0 / jnp.pi**2 * const.fyr ** (gamma - 3.0) * f ** (-gamma) * df
 
-def powerlaw_fixgam(f, df, log10_A):
+def powerlaw_gwb(f, df, log10_A): # Fixed gamma = 13/3 for GWB from SMBHBs
     return (10.0**(2.0 * log10_A)) / 12.0 / jnp.pi**2 * const.fyr ** (4.33 - 3.0) * f ** (-4.33) * df
-
-def powerlaw_bkgrnd(f, df): # fixed amplitude and slope for a GWB at A = 2*10**-15
-    return ((2 * 10**(-15))**2) / 12.0 / jnp.pi**2 * const.fyr ** (4.33 - 3.0) * f ** (-4.33) * df
 
 def brokenpowerlaw(f, df, log10_A, gamma, log10_fb):
     kappa = 0.1 # smoothness of transition

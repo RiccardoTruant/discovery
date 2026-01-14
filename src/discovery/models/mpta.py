@@ -16,6 +16,9 @@ def write_ml_json(df, savename):
         json.dump(ml_params, f, indent=2)
     return
 
+def powerlaw_bkgrnd(f, df): # fixed amplitude and slope for a GWB at A = 2*10**-15
+    return ((2 * 10**(-15))**2) / 12.0 / jnp.pi**2 * const.fyr ** (4.33 - 3.0) * f ** (-4.33) * df
+
 def update_priordict_standard_mpta():
     # Update the standard prior dictionary with PTA-specific parameters
     prior.priordict_standard.update({
@@ -68,6 +71,8 @@ def update_priordict_standard_mpta():
         r'(.*_)?timingmodel_coefficients\(\d+\)': [-20.0, 20.0],
         r'(.*_)?dm_sw_log10_rho\(\d+\)': [-10, 4],
         r'(.*_)?alpha_scaling\(\d+\)': [0.0, 100.0],
+        r'(.*_)?h3': [0.0, 10**-5],
+        r'(.*_)?stig': [0.0, 1.0]
     })
     return
 
@@ -96,7 +101,7 @@ def make_psr_gps_fourier(psr, max_cadence_days=14, Tspan=None, background=True, 
     psr_Tspan = signals.getspan(psr) if Tspan is None else Tspan
     psr_components = int(psr_Tspan / (max_cadence_days * 86400))
 
-    return (([signals.makegp_fourier(psr, signals.powerlaw_bkgrnd, components=psr_components, name='bkgrnd')] if background else []) + \
+    return (([signals.makegp_fourier(psr, powerlaw_bkgrnd, components=psr_components, name='bkgrnd')] if background else []) + \
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, name='red_noise')] if red else []) + \
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, name='red_noise2')] if red2 else []) + \
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_dm, name='dm_gp')] if dm else [])+ \
@@ -113,7 +118,7 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, Tspan=None, background=True, r
     psr_components = int(psr_Tspan / (max_cadence_days * 86400))
     psr_knots = 2 * psr_components + 1
 
-    return (([signals.makegp_fftcov(psr, signals.powerlaw_bkgrnd, components=psr_knots, name='bkgrnd')] if background else []) + \
+    return (([signals.makegp_fftcov(psr, powerlaw_bkgrnd, components=psr_knots, name='bkgrnd')] if background else []) + \
             ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_knots, name='red_noise')] if red else []) + \
             ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_knots, name='red_noise2')] if red2 else []) + \
             ([signals.makegp_fftcov_dm(psr, signals.powerlaw, components=psr_knots, name='dm_gp')] if dm else [])+ \
@@ -127,7 +132,7 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, Tspan=None, background=True, r
 
 def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, Tspan=None, noisedict={}, tm_variable=False, timing_inds=None, outliers=False, global_ecorr=False,
                         background=True, red=True, red2=False, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False, # GP models
-                        chrom_annual=False, chrom_exponential=False, chrom_gaussian=False): # Deterministic chromatic models
+                        chrom_annual=False, chrom_exponential=False, chrom_gaussian=False, shapiro=False): # Deterministic chromatic models
     # Set up per-backend white noise
     measurement_noise = signals.makenoise_measurement(psr, tnequad=True, noisedict=noisedict, outliers=outliers)
     # Set up timing model
@@ -148,6 +153,12 @@ def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, Tspan=None, noise
         model_components += [signals.makedelay(psr, deterministic.chromatic_exponential(psr), name='chrom_exp')]
     if chrom_gaussian:
         model_components += [signals.makedelay(psr, deterministic.chromatic_gaussian(psr), name='chrom_gauss')]
+    if shapiro:
+        tasc = 59000.033444485320853 * 86400 # Example value for J2241-5236
+        pb = 1 / 7.9452845656629659959e-05 # Example value for J2241-5236
+        binphase = (2 * np.pi / pb) * (psr.toas - tasc)
+        print("warning: using example values for tasc and pb in shapiro delay model")
+        model_components += [signals.makedelay(psr, deterministic.orthometric_shapiro(psr, binphase), name='shapiro')]
     # Add GP components
     if fftint:
         model_components += make_psr_gps_fftint(psr, max_cadence_days=max_cadence_days,Tspan=Tspan, background=background, red=red, red2=red2, dm=dm, chrom=chrom, sw=sw, dm_sw_free=dm_sw_free, band=band, band_low=band_low, band_alpha=band_alpha)
