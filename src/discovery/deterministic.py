@@ -193,6 +193,7 @@ def chromatic_gaussian(psr, fref=1400.0):
 
     return delay
 
+
 def orthometric_shapiro(psr, binphase):
     """Orthometric Shapiro delay model from Freire & Wex (2010)."""
     toas, binphase = matrix.jnparray(psr.toas / const.day), matrix.jnparray(binphase)
