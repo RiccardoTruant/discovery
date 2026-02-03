@@ -109,7 +109,7 @@ def make_psr_gps_fourier(psr, max_cadence_days=14, Tspan=None, GlobalTspan = Non
     return (([signals.makegp_fourier(psr, signals.powerlaw_fixgam, components=psr_components, name='bkgrnd')] if background and not bkgrnd_fixed and not gw_common else []) + \
             ([signals.makegp_fourier(psr, powerlaw_bkgrnd_fixed, components=psr_components, name='bkgrnd_fixed')] if background and bkgrnd_fixed and not gw_common else []) + \
             #set up common process
-            ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_Globalcomponents, common=['gw_log10_A', 'gw_gamma'], name='gw')] if background and gw_common and not bkgrnd_fixed else []) + \
+            ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_Globalcomponents, common=['curn_log10_A', 'curn_gamma'], name='curn')] if background and gw_common and not bkgrnd_fixed else []) + \
             #single pulsar noise processes
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, name='red_noise')] if red else []) + \
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_dm, name='dm_gp')] if dm else [])+ \
@@ -139,7 +139,7 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, Tspan=None, GlobalTspan = None
     return (([signals.makegp_fftcov(psr, signals.powerlaw_fixgam, components=psr_knots, name='bkgrnd')] if background  and not bkgrnd_fixed and not gw_common else []) + \
             ([signals.makegp_fftcov(psr, powerlaw_bkgrnd_fixed, components=psr_knots, name='bkgrnd_fixed')] if background and bkgrnd_fixed and not gw_common else []) + \
             #set up common process
-            ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_Globalknots, common=['gw_log10_A', 'gw_gamma','gw_log10_fb'], name='gw')] if background and gw_common and not bkgrnd_fixed else []) + \
+            ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_Globalknots, common=['curn_log10_A', 'curn_gamma'], name='curn')] if background and gw_common and not bkgrnd_fixed else []) + \
             #single pulsar noise processes
             ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_knots, name='red_noise')] if red else []) + \
             ([signals.makegp_fftcov_dm(psr, signals.powerlaw, components=psr_knots, name='dm_gp')] if dm else [])+ \
