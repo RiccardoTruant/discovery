@@ -239,11 +239,12 @@ def single_pulsar_noise_simple(psr, fftint=True, max_cadence_days=14, Tspan=None
     return m
 
 
-def GWB_simple_search_common(psrs, GlobalTspan=None, fftInt=False, max_cadence_days=14,name="curn"):
+def GWB_simple_search_common(psrs, GlobalTspan=None, Tspan=None, fftInt=False, max_cadence_days=14,name="curn"):
         
     GlobalTspan = signals.getspan(psrs) if GlobalTspan is None else GlobalTspan
+    Tspan       = signals.getspan(psrs) if Tspan is None else Tspan
 
-    gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan, background=True, bkgrnd_fixed=False, curn=True, noisedict={f"{psr.name}_efac": 1.0}, global_ecorr=False, 
+    gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan,  Tspan=Tspan, background=True, bkgrnd_fixed=False, curn=True, noisedict={f"{psr.name}_efac": 1.0}, global_ecorr=False, 
                         red=True, dm=False, chrom=False, sw=False, band=False, band_low=False, band_alpha=False) for psr in psrs])
     
     return gbl
