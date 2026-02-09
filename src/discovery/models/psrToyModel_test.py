@@ -94,22 +94,22 @@ def gps2commongp(gps):
     return matrix.VariableGP(matrix.VectorNoiseMatrix1D_var(prior), Fs)
 
 
-def make_psr_gps_fourier(psr, max_cadence_days=14, Tspan=None, GlobalTspan = None,background=True, bkgrnd_fixed=False, bkgrnd_fixed_log10A=jnp.log10(2e-15), bkgrnd_fixed_gamma=13/3, gw_common=False, red=True, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False):
+def make_psr_gps_fourier(psr, max_cadence_days=14, Tspan=None, GlobalTspan = None,background=True, bkgrnd_fixed=False, bkgrnd_fixed_log10A=jnp.log10(2e-15), bkgrnd_fixed_gamma=13/3, curn=False, red=True, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False):
     psr_Tspan = signals.getspan(psr) if Tspan is None else Tspan
-    psr_components = int(psr_Tspan / (max_cadence_days * 86400))
+    psr_components = 30# int(psr_Tspan / (max_cadence_days * 86400))
 
     psr_GlobalTspan = signals.getspan(psr) if GlobalTspan is None else GlobalTspan
-    psr_Globalcomponents = int(psr_GlobalTspan / (max_cadence_days * 86400))
+    psr_Globalcomponents = 14#int(psr_GlobalTspan / (max_cadence_days * 86400))
 
     def powerlaw_bkgrnd_fixed(f, df): # fixed amplitude and slope for a GWB
 
         A = 10**bkgrnd_fixed_log10A
         return (A**2) / 12.0 / jnp.pi**2 * const.fyr ** (bkgrnd_fixed_gamma - 3.0) * f ** (-bkgrnd_fixed_gamma) * df
 
-    return (([signals.makegp_fourier(psr, signals.powerlaw_fixgam, components=psr_components, name='bkgrnd')] if background and not bkgrnd_fixed and not gw_common else []) + \
-            ([signals.makegp_fourier(psr, powerlaw_bkgrnd_fixed, components=psr_components, name='bkgrnd_fixed')] if background and bkgrnd_fixed and not gw_common else []) + \
+    return (([signals.makegp_fourier(psr, signals.powerlaw_fixgam, components=psr_components, name='bkgrnd')] if background and not bkgrnd_fixed and not curn else []) + \
+            ([signals.makegp_fourier(psr, powerlaw_bkgrnd_fixed, components=psr_components, name='bkgrnd_fixed')] if background and bkgrnd_fixed and not curn else []) + \
             #set up common process
-            ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_Globalcomponents, common=['gw_log10_A', 'gw_gamma'], name='gw')] if background and gw_common and not bkgrnd_fixed else []) + \
+            ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_Globalcomponents, common=['curn_log10_A', 'curn_gamma'], name='curn')] if background and curn and not bkgrnd_fixed else []) + \
             #single pulsar noise processes
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, name='red_noise')] if red else []) + \
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_dm, name='dm_gp')] if dm else [])+ \
@@ -121,7 +121,7 @@ def make_psr_gps_fourier(psr, max_cadence_days=14, Tspan=None, GlobalTspan = Non
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_band_range_alpha, name='bandalpha_gp')] if band_alpha else []))
 
 
-def make_psr_gps_fftint(psr, max_cadence_days=14, Tspan=None, GlobalTspan = None , background=True, bkgrnd_fixed=False, bkgrnd_fixed_log10A=jnp.log10(2e-15), bkgrnd_fixed_gamma=13/3, gw_common=False, red=True, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False):
+def make_psr_gps_fftint(psr, max_cadence_days=14, Tspan=None, GlobalTspan = None , background=True, bkgrnd_fixed=False, bkgrnd_fixed_log10A=jnp.log10(2e-15), bkgrnd_fixed_gamma=13/3, curn=False, red=True, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False):
     psr_Tspan = signals.getspan(psr) if Tspan is None else Tspan
     psr_components = int(psr_Tspan / (max_cadence_days * 86400))
     psr_knots = 2 * psr_components + 1
@@ -136,10 +136,10 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, Tspan=None, GlobalTspan = None
         A = 10**bkgrnd_fixed_log10A
         return (A**2) / 12.0 / jnp.pi**2 * const.fyr ** (bkgrnd_fixed_gamma - 3.0) * f ** (-bkgrnd_fixed_gamma) * df
 
-    return (([signals.makegp_fftcov(psr, signals.powerlaw_fixgam, components=psr_knots, name='bkgrnd')] if background  and not bkgrnd_fixed and not gw_common else []) + \
-            ([signals.makegp_fftcov(psr, powerlaw_bkgrnd_fixed, components=psr_knots, name='bkgrnd_fixed')] if background and bkgrnd_fixed and not gw_common else []) + \
+    return (([signals.makegp_fftcov(psr, signals.powerlaw_fixgam, components=psr_knots, name='bkgrnd')] if background  and not bkgrnd_fixed and not curn else []) + \
+            ([signals.makegp_fftcov(psr, powerlaw_bkgrnd_fixed, components=psr_knots, name='bkgrnd_fixed')] if background and bkgrnd_fixed and not curn else []) + \
             #set up common process
-            ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_Globalknots, common=['gw_log10_A', 'gw_gamma'], name='gw')] if background and gw_common and not bkgrnd_fixed else []) + \
+            ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_Globalknots, common=['curn_log10_A', 'curn_gamma'], name='curn')] if background and curn and not bkgrnd_fixed else []) + \
             #single pulsar noise processes
             ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_knots, name='red_noise')] if red else []) + \
             ([signals.makegp_fftcov_dm(psr, signals.powerlaw, components=psr_knots, name='dm_gp')] if dm else [])+ \
@@ -152,7 +152,7 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, Tspan=None, GlobalTspan = None
 
 
 def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, Tspan=None, GlobalTspan = None , noisedict={}, tm_variable=False, timing_inds=None, outliers=False, tnequad=True, ecorr=True, global_ecorr=False,
-                        background=False, bkgrnd_fixed=False, bkgrnd_fixed_log10A=jnp.log10(2e-15), bkgrnd_fixed_gamma=13/3, gw_common=False, red=True, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False, # GP models
+                        background=False, bkgrnd_fixed=False, bkgrnd_fixed_log10A=jnp.log10(2e-15), bkgrnd_fixed_gamma=13/3, curn=False, red=True, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False, # GP models
                         chrom_annual=False, chrom_exponential=False, chrom_gaussian=False): # Deterministic chromatic models
     # Set up per-backend white noise
     measurement_noise = signals.makenoise_measurement(psr, tnequad=tnequad, noisedict=noisedict, outliers=outliers) 
@@ -178,9 +178,9 @@ def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, Tspan=None, Globa
         model_components += [signals.makedelay(psr, deterministic.chromatic_gaussian(psr), name='chrom_gauss')]
     # Add GP components
     if fftint:
-        model_components += make_psr_gps_fftint(psr, max_cadence_days=max_cadence_days,Tspan=Tspan, GlobalTspan=GlobalTspan, background=background, bkgrnd_fixed=bkgrnd_fixed, bkgrnd_fixed_log10A=bkgrnd_fixed_log10A, bkgrnd_fixed_gamma=bkgrnd_fixed_gamma, gw_common=gw_common, red=red, dm=dm, chrom=chrom, sw=sw, dm_sw_free=dm_sw_free, band=band, band_low=band_low, band_alpha=band_alpha)
+        model_components += make_psr_gps_fftint(psr, max_cadence_days=max_cadence_days,Tspan=Tspan, GlobalTspan=GlobalTspan, background=background, bkgrnd_fixed=bkgrnd_fixed, bkgrnd_fixed_log10A=bkgrnd_fixed_log10A, bkgrnd_fixed_gamma=bkgrnd_fixed_gamma, curn=curn, red=red, dm=dm, chrom=chrom, sw=sw, dm_sw_free=dm_sw_free, band=band, band_low=band_low, band_alpha=band_alpha)
     else:
-        model_components += make_psr_gps_fourier(psr, max_cadence_days=max_cadence_days, Tspan=Tspan, GlobalTspan=GlobalTspan, background=background, bkgrnd_fixed=bkgrnd_fixed, bkgrnd_fixed_log10A=bkgrnd_fixed_log10A, bkgrnd_fixed_gamma=bkgrnd_fixed_gamma, gw_common=gw_common, red=red, dm=dm, chrom=chrom, sw=sw, dm_sw_free=dm_sw_free, band=band, band_low=band_low, band_alpha=band_alpha)
+        model_components += make_psr_gps_fourier(psr, max_cadence_days=max_cadence_days, Tspan=Tspan, GlobalTspan=GlobalTspan, background=background, bkgrnd_fixed=bkgrnd_fixed, bkgrnd_fixed_log10A=bkgrnd_fixed_log10A, bkgrnd_fixed_gamma=bkgrnd_fixed_gamma, curn=curn, red=red, dm=dm, chrom=chrom, sw=sw, dm_sw_free=dm_sw_free, band=band, band_low=band_low, band_alpha=band_alpha)
 
     comp_params = []
     for comp in model_components:
@@ -197,7 +197,7 @@ def single_pulsar_noise(psr, fftint=True, max_cadence_days=14, Tspan=None, Globa
 
 #single pulsar noise make noise measuramnt simple:
 def single_pulsar_noise_simple(psr, fftint=True, max_cadence_days=14, Tspan=None, GlobalTspan = None , noisedict={}, tm_variable=False, timing_inds=None, add_equad=False, tnequad=False, ecorr=False, global_ecorr=False,
-                        background=True, bkgrnd_fixed=True, bkgrnd_fixed_log10A= jnp.log10(5e-15) , bkgrnd_fixed_gamma=13/3, gw_common=False, red=True, dm=False, chrom=False, sw=False, dm_sw_free=False, band=False, band_low=False, band_alpha=False, # GP models
+                        background=True, bkgrnd_fixed=True, bkgrnd_fixed_log10A= jnp.log10(5e-15) , bkgrnd_fixed_gamma=13/3, curn=False, red=True, dm=False, chrom=False, sw=False, dm_sw_free=False, band=False, band_low=False, band_alpha=False, # GP models
                         chrom_annual=False, chrom_exponential=False, chrom_gaussian=False): # Deterministic chromatic models
     # Set up per-backend white noise
     measurement_noise_simple = signals.makenoise_measurement_simple(psr,  noisedict=noisedict ,add_equad=add_equad, tnequad=tnequad) 
@@ -223,9 +223,9 @@ def single_pulsar_noise_simple(psr, fftint=True, max_cadence_days=14, Tspan=None
         model_components += [signals.makedelay(psr, deterministic.chromatic_gaussian(psr), name='chrom_gauss')]
     # Add GP components
     if fftint:
-        model_components += make_psr_gps_fftint(psr, max_cadence_days=max_cadence_days,Tspan=Tspan, GlobalTspan=GlobalTspan, background=background, bkgrnd_fixed=bkgrnd_fixed, bkgrnd_fixed_log10A=bkgrnd_fixed_log10A, bkgrnd_fixed_gamma=bkgrnd_fixed_gamma, gw_common=gw_common, red=red, dm=dm, chrom=chrom, sw=sw, dm_sw_free=dm_sw_free, band=band, band_low=band_low, band_alpha=band_alpha)
+        model_components += make_psr_gps_fftint(psr, max_cadence_days=max_cadence_days,Tspan=Tspan, GlobalTspan=GlobalTspan, background=background, bkgrnd_fixed=bkgrnd_fixed, bkgrnd_fixed_log10A=bkgrnd_fixed_log10A, bkgrnd_fixed_gamma=bkgrnd_fixed_gamma, curn=curn, red=red, dm=dm, chrom=chrom, sw=sw, dm_sw_free=dm_sw_free, band=band, band_low=band_low, band_alpha=band_alpha)
     else:
-        model_components += make_psr_gps_fourier(psr, max_cadence_days=max_cadence_days, Tspan=Tspan, GlobalTspan=GlobalTspan, background=background, bkgrnd_fixed=bkgrnd_fixed, bkgrnd_fixed_log10A=bkgrnd_fixed_log10A, bkgrnd_fixed_gamma=bkgrnd_fixed_gamma, gw_common=gw_common, red=red, dm=dm, chrom=chrom, sw=sw, dm_sw_free=dm_sw_free, band=band, band_low=band_low, band_alpha=band_alpha)
+        model_components += make_psr_gps_fourier(psr, max_cadence_days=max_cadence_days, Tspan=Tspan, GlobalTspan=GlobalTspan, background=background, bkgrnd_fixed=bkgrnd_fixed, bkgrnd_fixed_log10A=bkgrnd_fixed_log10A, bkgrnd_fixed_gamma=bkgrnd_fixed_gamma, curn=curn, red=red, dm=dm, chrom=chrom, sw=sw, dm_sw_free=dm_sw_free, band=band, band_low=band_low, band_alpha=band_alpha)
 
     comp_params = []
     for comp in model_components:
@@ -239,11 +239,12 @@ def single_pulsar_noise_simple(psr, fftint=True, max_cadence_days=14, Tspan=None
     return m
 
 
-def GWB_simple_search_common(psrs, GlobalTspan=None, fftInt=False, max_cadence_days=14):
+def GWB_simple_search_common(psrs, GlobalTspan=None, Tspan=None, fftInt=False, max_cadence_days=14,name="curn"):
         
     GlobalTspan = signals.getspan(psrs) if GlobalTspan is None else GlobalTspan
+    Tspan       = signals.getspan(psrs) if Tspan is None else Tspan
 
-    gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan, background=True, bkgrnd_fixed=False, gw_common=True, noisedict={f"{psr.name}_efac": 1.0}, global_ecorr=False, 
+    gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan,  Tspan=Tspan, background=True, bkgrnd_fixed=False, curn=True, noisedict={f"{psr.name}_efac": 1.0}, global_ecorr=False, 
                         red=True, dm=False, chrom=False, sw=False, band=False, band_low=False, band_alpha=False) for psr in psrs])
     
     return gbl
