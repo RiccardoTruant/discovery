@@ -96,10 +96,10 @@ def gps2commongp(gps):
 
 def make_psr_gps_fourier(psr, max_cadence_days=14, Tspan=None, GlobalTspan = None,background=True, bkgrnd_fixed=False, bkgrnd_fixed_log10A=jnp.log10(2e-15), bkgrnd_fixed_gamma=13/3, curn=False, red=True, dm=True, chrom=True, sw=True, dm_sw_free=False, band=False, band_low=False, band_alpha=False):
     psr_Tspan = signals.getspan(psr) if Tspan is None else Tspan
-    psr_components = 30# int(psr_Tspan / (max_cadence_days * 86400))
+    psr_components = int(psr_Tspan / (max_cadence_days * 86400))
 
     psr_GlobalTspan = signals.getspan(psr) if GlobalTspan is None else GlobalTspan
-    psr_Globalcomponents = 14#int(psr_GlobalTspan / (max_cadence_days * 86400))
+    psr_Globalcomponents = int(psr_GlobalTspan / (max_cadence_days * 86400))
 
     def powerlaw_bkgrnd_fixed(f, df): # fixed amplitude and slope for a GWB
 
@@ -239,18 +239,32 @@ def single_pulsar_noise_simple(psr, fftint=True, max_cadence_days=14, Tspan=None
     return m
 
 
-def GWB_simple_search_common(psrs, GlobalTspan=None, Tspan=None, fftInt=False, max_cadence_days=14,name="curn"):
+def GWB_simple_search_common(psrs, GlobalTspan=None, fftInt=False, max_cadence_days=14,name="curn"):
         
     GlobalTspan = signals.getspan(psrs) if GlobalTspan is None else GlobalTspan
-    Tspan       = signals.getspan(psrs) if Tspan is None else Tspan
+    
 
-    gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan,  Tspan=Tspan, background=True, bkgrnd_fixed=False, curn=True, noisedict={f"{psr.name}_efac": 1.0}, global_ecorr=False, 
+    gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan, background=True, bkgrnd_fixed=False, curn=True, noisedict={f"{psr.name}_efac": 1.0}, global_ecorr=False, 
                         red=True, dm=False, chrom=False, sw=False, band=False, band_low=False, band_alpha=False) for psr in psrs])
     
     return gbl
 
 
 
+# merge multiple GPs into a single CommonGP
+# CURN model for EPTA DR2new+. No exponential dips
+def curn_array(psrs, crn_components=30):
+
+    tspan = signals.getspan(psrs)
+
+    
+    pslmodels = [single_pulsar_noise_simple(psr, fftint=False, max_cadence_days=14, Tspan=tspan, background=False, bkgrnd_fixed=False, curn=False, noisedict={f"{psr.name}_efac": 1.0}, global_ecorr=False,
+                        red=True, dm=False, chrom=False, sw=False, band=False, band_low=False, band_alpha=False) for psr in psrs]
+
+    cgp = gps2commongp([matrix.CompoundGP([signals.makegp_fourier(psr, signals.powerlaw, crn_components, tspan, common=['gw_crn_log10_A', 'gw_crn_gamma'], name='gw_crn')]) for psr in psrs])
+
+    return likelihood.ArrayLikelihood(pslmodels, commongp=cgp)
+    
 
 
 
