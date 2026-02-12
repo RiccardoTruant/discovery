@@ -106,7 +106,7 @@ def make_psr_gps_fourier(psr, max_cadence_days=14, Tspan=None, GlobalTspan = Non
         A = 10**bkgrnd_fixed_log10A
         return (A**2) / 12.0 / jnp.pi**2 * const.fyr ** (bkgrnd_fixed_gamma - 3.0) * f ** (-bkgrnd_fixed_gamma) * df
 
-    return (([signals.makegp_fourier(psr, signals.powerlaw_fixgam, components=psr_components, name='bkgrnd')] if background and not bkgrnd_fixed and not curn else []) + \
+    return (([signals.makegp_fourier(psr, signals.powerlaw_gwb, components=psr_components, name='bkgrnd')] if background and not bkgrnd_fixed and not curn else []) + \
             ([signals.makegp_fourier(psr, powerlaw_bkgrnd_fixed, components=psr_components, name='bkgrnd_fixed')] if background and bkgrnd_fixed and not curn else []) + \
             #set up common process
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_Globalcomponents, T=psr_GlobalTspan, common=['curn_log10_A', 'curn_gamma'], name='curn')] if background and curn and not bkgrnd_fixed else []) + \
@@ -136,7 +136,7 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, Tspan=None, GlobalTspan = None
         A = 10**bkgrnd_fixed_log10A
         return (A**2) / 12.0 / jnp.pi**2 * const.fyr ** (bkgrnd_fixed_gamma - 3.0) * f ** (-bkgrnd_fixed_gamma) * df
 
-    return (([signals.makegp_fftcov(psr, signals.powerlaw_fixgam, components=psr_knots, name='bkgrnd')] if background  and not bkgrnd_fixed and not curn else []) + \
+    return (([signals.makegp_fftcov(psr, signals.powerlaw_gwb, components=psr_knots, name='bkgrnd')] if background  and not bkgrnd_fixed and not curn else []) + \
             ([signals.makegp_fftcov(psr, powerlaw_bkgrnd_fixed, components=psr_knots, name='bkgrnd_fixed')] if background and bkgrnd_fixed and not curn else []) + \
             #set up common process
             ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_Globalknots, T=psr_GlobalTspan, common=['curn_log10_A', 'curn_gamma'], name='curn')] if background and curn and not bkgrnd_fixed else []) + \

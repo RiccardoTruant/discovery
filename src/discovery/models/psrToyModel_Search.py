@@ -109,7 +109,7 @@ def make_psr_gps_fourier(psr, max_cadence_days=14, Tspan=None, GlobalTspan = Non
     return (([signals.makegp_fourier(psr, signals.powerlaw_fixgam, components=psr_components, name='bkgrnd')] if background and not bkgrnd_fixed and not curn else []) + \
             ([signals.makegp_fourier(psr, powerlaw_bkgrnd_fixed, components=psr_components, name='bkgrnd_fixed')] if background and bkgrnd_fixed and not curn else []) + \
             #set up common process
-            ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_Globalcomponents, common=['curn_log10_A', 'curn_gamma'], name='curn')] if background and curn and not bkgrnd_fixed else []) + \
+            ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_Globalcomponents, T=psr_GlobalTspan, common=['curn_log10_A', 'curn_gamma'], name='curn')] if background and curn and not bkgrnd_fixed else []) + \
             #single pulsar noise processes
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, name='red_noise')] if red else []) + \
             ([signals.makegp_fourier(psr, signals.powerlaw, components=psr_components, fourierbasis=signals.fourierbasis_dm, name='dm_gp')] if dm else [])+ \
@@ -139,7 +139,7 @@ def make_psr_gps_fftint(psr, max_cadence_days=14, Tspan=None, GlobalTspan = None
     return (([signals.makegp_fftcov(psr, signals.powerlaw_fixgam, components=psr_knots, name='bkgrnd')] if background  and not bkgrnd_fixed and not curn else []) + \
             ([signals.makegp_fftcov(psr, powerlaw_bkgrnd_fixed, components=psr_knots, name='bkgrnd_fixed')] if background and bkgrnd_fixed and not curn else []) + \
             #set up common process
-            ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_Globalknots, common=['curn_log10_A', 'curn_gamma'], name='curn')] if background and curn and not bkgrnd_fixed else []) + \
+            ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_Globalknots, T=psr_GlobalTspan, common=['curn_log10_A', 'curn_gamma'], name='curn')] if background and curn and not bkgrnd_fixed else []) + \
             #single pulsar noise processes
             ([signals.makegp_fftcov(psr, signals.powerlaw, components=psr_knots, name='red_noise')] if red else []) + \
             ([signals.makegp_fftcov_dm(psr, signals.powerlaw, components=psr_knots, name='dm_gp')] if dm else [])+ \
@@ -239,34 +239,15 @@ def single_pulsar_noise_simple(psr, fftint=True, max_cadence_days=14, Tspan=None
     return m
 
 
-def GWB_simple_search_common(psrs, GlobalTspan=None, fftInt=False, max_cadence_days=14,name="curn"):
+def GWB_simple_search_common(psrs, GlobalTspan=None, fftInt=False, red=True, dm=True, chrom=False, sw=False,band=False, band_low=False, band_alpha=False, max_cadence_days=14,name="curn"):
         
     GlobalTspan = signals.getspan(psrs) if GlobalTspan is None else GlobalTspan
     
 
     gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan, background=True, bkgrnd_fixed=False, curn=True, noisedict={f"{psr.name}_efac": 1.0}, global_ecorr=False, 
-                        red=True, dm=False, chrom=False, sw=False, band=False, band_low=False, band_alpha=False) for psr in psrs])
+                        red=red, dm=dm, chrom=chrom, sw=sw, band=band, band_low=band_low, band_alpha=band_alpha) for psr in psrs])
     
     return gbl
-
-
-
-# merge multiple GPs into a single CommonGP
-# CURN model for EPTA DR2new+. No exponential dips
-def curn_array(psrs, crn_components=30):
-
-    tspan = signals.getspan(psrs)
-
-    
-    pslmodels = [single_pulsar_noise_simple(psr, fftint=False, max_cadence_days=14, Tspan=tspan, background=False, bkgrnd_fixed=False, curn=False, noisedict={f"{psr.name}_efac": 1.0}, global_ecorr=False,
-                        red=True, dm=False, chrom=False, sw=False, band=False, band_low=False, band_alpha=False) for psr in psrs]
-
-    cgp = gps2commongp([matrix.CompoundGP([signals.makegp_fourier(psr, signals.powerlaw, crn_components, tspan, common=['gw_crn_log10_A', 'gw_crn_gamma'], name='gw_crn')]) for psr in psrs])
-
-    return likelihood.ArrayLikelihood(pslmodels, commongp=cgp)
-    
-
-
 
 
 
