@@ -47,24 +47,69 @@ class OS:
 
     @functools.cached_property
     def Q(self):
-        Nmats, Fmats, Tmats = zip(*[(psl.N.N.N, psl.N.F, psl.gw.F) for psl in self.psls])
+        # Return a function N(params) -> 1D white-noise diagonal for each pulsar.
+        def make_noise_getter(psl):
+            nobj = psl.N
 
-        LNms = [1.0 / matrix.jnp.sqrt(Nmat) for Nmat in Nmats]
-        Fts = [LNm[:,None] * Fmat for LNm, Fmat in zip(LNms, Fmats)]
-        Tts = [LNm[:,None] * Tmat for LNm, Tmat in zip(LNms, Tmats)] # this is GW-only
+            # Some models nest Woodbury kernels (e.g. red-noise over white-noise terms).
+            # Peel wrappers until we reach a base 1D noise matrix.
+            while True:
+                if isinstance(nobj, (matrix.NoiseMatrix1D_novar, matrix.NoiseMatrix1D_var)):
+                    break
+                if isinstance(nobj, (matrix.WoodburyKernel_novar,
+                                     matrix.WoodburyKernel_varP,
+                                     matrix.WoodburyKernel_varFP,
+                                     matrix.WoodburyKernel_varNP)):
+                    nobj = nobj.N
+                    continue
+                if isinstance(nobj, matrix.WoodburyKernel_varN):
+                    nobj = nobj.N_var
+                    continue
+                raise TypeError(f"Unrecognised kernel/noise type in OS.Q: {type(nobj)}")
 
-        FFts = [matrix.jnparray(Ft.T @ Ft) for Ft in Fts]
-        TTts = [matrix.jnparray(Tt.T @ Tt) for Tt in Tts]
-        FTts = [matrix.jnparray(Ft.T @ Tt) for Ft, Tt in zip(Fts, Tts)]
+            if isinstance(nobj, matrix.NoiseMatrix1D_novar):
+                nconst = matrix.jnparray(nobj.N)
+
+                def get_n(_params):
+                    return nconst
+                get_n.params = []
+                return get_n
+
+            if isinstance(nobj, matrix.NoiseMatrix1D_var):
+                getN = nobj.getN
+
+                def get_n(params):
+                    return matrix.jnparray(getN(params))
+                get_n.params = getN.params
+                return get_n
+
+            raise TypeError(
+                "OS.Q requires white-noise diagonals (NoiseMatrix1D_novar/var). "
+                f"Got {type(nobj)}"
+            )
+
+        Ngetters, Fmats, Tmats = zip(*[(make_noise_getter(psl), psl.N.F, psl.gw.F) for psl in self.psls])
 
         Phivar = self.psls[0].gw.Phi.getN
         Pvars = [psl.N.P_var.getN for psl in self.psls]
 
-        ngw = Tts[0].shape[1]
+        ngw = Tmats[0].shape[1]
         cnt = len(self.psls) * ngw
         inds = [slice(i * ngw, (i + 1) * ngw) for i in range(len(self.psls))]
 
         def get_Q(params, orf=hd_orfa):
+            Nmats = [getN(params) for getN in Ngetters]
+            if any(Nmat.ndim != 1 for Nmat in Nmats):
+                raise TypeError("OS.Q currently requires 1D white-noise diagonals.")
+
+            LNms = [1.0 / matrix.jnp.sqrt(Nmat) for Nmat in Nmats]
+            Fts = [LNm[:,None] * Fmat for LNm, Fmat in zip(LNms, Fmats)]
+            Tts = [LNm[:,None] * Tmat for LNm, Tmat in zip(LNms, Tmats)] # this is GW-only
+
+            FFts = [matrix.jnparray(Ft.T @ Ft) for Ft in Fts]
+            TTts = [matrix.jnparray(Tt.T @ Tt) for Tt in Tts]
+            FTts = [matrix.jnparray(Ft.T @ Tt) for Ft, Tt in zip(Fts, Tts)]
+
             sPhi = matrix.jnp.sqrt(Phivar(params))
 
             cs = [matrix.jsp.linalg.cho_factor(matrix.jnp.diag(1.0 / Pvar(params)) + FFt) for Pvar, FFt in zip(Pvars, FFts)]
@@ -92,7 +137,7 @@ class OS:
                 Q = Q.at[inds[j], inds[i]].add(Bij.T)
 
             return Q / denom
-        get_Q.params = self.os_rhosigma.params
+        get_Q.params = sorted(set.union(set(self.os_rhosigma.params), *[set(getN.params) for getN in Ngetters]))
 
         return get_Q
 
