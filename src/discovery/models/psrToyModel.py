@@ -247,12 +247,12 @@ def single_pulsar_noise_simple(psr, fftint=True, max_cadence_days=14, Tspan=None
     return m
 
 
-def GWB_simple_search_common(psrs, GlobalTspan=None, fftInt=False, red=True, dm=True, chrom=False, sw=False,band=False, band_low=False, band_alpha=False, curn_fix_gamma=False, max_cadence_days=14,name="curn"):
+def GWB_simple_search_common(psrs, GlobalTspan=None, fftInt=False,ecorr=True, red=True, dm=True, chrom=True, sw=False,band=False, band_low=False, band_alpha=False, curn_fix_gamma=False, max_cadence_days=14,name="curn"):
         
     GlobalTspan = signals.getspan(psrs) if GlobalTspan is None else GlobalTspan
     
     #noisedict={f"{psr.name}_efac": 1.0}
-    gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan, background=True, bkgrnd_fixed=False, curn=True, curn_fix_gamma=curn_fix_gamma, noisedict={}, global_ecorr=False, 
+    gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan, background=True, bkgrnd_fixed=False, curn=True, curn_fix_gamma=curn_fix_gamma, noisedict={}, ecorr=ecorr, global_ecorr=False, 
                         red=red, dm=dm, chrom=chrom, sw=sw, band=band, band_low=band_low, band_alpha=band_alpha) for psr in psrs])
     
     return gbl
