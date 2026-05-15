@@ -29,10 +29,12 @@ def update_priordict_standard_mpta():
         # Per-pulsar GW background parameters
         '(.*_)?bkgrnd_log10_A':     [-18, -11],
         # GP parameters
+        '(.*_)?rednoise_log10_A.*':   [-18, -11],
+        '(.*_)?rednoise_gamma.*':     [0, 7],
         '(.*_)?red_noise_log10_A.*':  [-18, -11],
         '(.*_)?red_noise_gamma.*':    [0, 7],
-        '(.*_)?red_noise2_log10_A.*':  [-18, -11],
-        '(.*_)?red_noise2_gamma.*':    [0, 7],
+        '(.*_)?red_noise2_log10_A.*': [-18, -11],
+        '(.*_)?red_noise2_gamma.*':   [0, 7],
         '(.*_)?dm_gp_log10_A':      [-18, -11],
         '(.*_)?dm_gp_gamma':        [0, 7],
         '(.*_)?chrom_gp_log10_A':   [-18, -11],

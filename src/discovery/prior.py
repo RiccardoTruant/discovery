@@ -21,8 +21,8 @@ priordict_standard = {
     "(.*_)?rednoise_log10_A.*": [-20, -11],
     "(.*_)?rednoise_gamma.*": [0, 7],
     "(.*_)?rednoise_log10_fb": [-9, -6],
-    "(.*_)?red_noise_log10_A.*": [-20, -11],  # deprecated
-    "(.*_)?red_noise_gamma.*": [0, 7],  # deprecated
+    "(.*_)?red_noise_log10_A": [-18, -11],  # deprecated
+    "(.*_)?red_noise_gamma": [0, 7],  # deprecated
     "(.*_)?red_noise_log10_fb": [-9, -6],
     "crn_log10_A.*": [-18, -11],
     "crn_gamma.*": [0, 7],

@@ -47,53 +47,47 @@ class OS:
 
     @functools.cached_property
     def Q(self):
-        Nmats, Fmats, Tmats = zip(*[(psl.N.N.N, psl.N.F, psl.gw.F) for psl in self.psls])
-
-        LNms = [1.0 / matrix.jnp.sqrt(Nmat) for Nmat in Nmats]
-        Fts = [LNm[:,None] * Fmat for LNm, Fmat in zip(LNms, Fmats)]
-        Tts = [LNm[:,None] * Tmat for LNm, Tmat in zip(LNms, Tmats)] # this is GW-only
-
-        FFts = [matrix.jnparray(Ft.T @ Ft) for Ft in Fts]
-        TTts = [matrix.jnparray(Tt.T @ Tt) for Tt in Tts]
-        FTts = [matrix.jnparray(Ft.T @ Tt) for Ft, Tt in zip(Fts, Tts)]
-
+        # Use make_solve_2d to handle any kernel structure including
+        # nested WoodburyKernel_varNP -> WoodburyKernel_varN -> NoiseMatrix1D_var
+        Tmats = [matrix.jnparray(psl.gw.F) for psl in self.psls]
         Phivar = self.psls[0].gw.Phi.getN
-        Pvars = [psl.N.P_var.getN for psl in self.psls]
 
-        ngw = Tts[0].shape[1]
-        cnt = len(self.psls) * ngw
-        inds = [slice(i * ngw, (i + 1) * ngw) for i in range(len(self.psls))]
+        # Build solvers ONCE here outside get_Q
+        N_solve_2ds = [psl.N.make_solve_2d() for psl in self.psls]
+
+        ngw  = Tmats[0].shape[1]
+        npsr = len(self.psls)
+        cnt  = npsr * ngw
+        inds = [slice(i * ngw, (i + 1) * ngw) for i in range(npsr)]
 
         def get_Q(params, orf=hd_orfa):
             sPhi = matrix.jnp.sqrt(Phivar(params))
 
-            cs = [matrix.jsp.linalg.cho_factor(matrix.jnp.diag(1.0 / Pvar(params)) + FFt) for Pvar, FFt in zip(Pvars, FFts)]
-            Ss = [TTt - FTt.T @ matrix.jsp.linalg.cho_solve(c, FTt) for c, TTt, FTt in zip(cs, TTts, FTts)]
+            Ss = [Tmat.T @ N_solve_2d(params, Tmat)[0]
+                  for Tmat, N_solve_2d in zip(Tmats, N_solve_2ds)]
 
-            Ss = [0.5 * (S + S.T) for S in Ss]  # ensure symmetry
-            As = [matrix.jnp.linalg.cholesky(S + (1e-10 * matrix.jnp.trace(S) / S.shape[0]) * matrix.jnp.eye(S.shape[0]))
-                for S in Ss]
+            Ss = [0.5 * (S + S.T) for S in Ss]
+            As = [matrix.jnp.linalg.cholesky(
+                      S + (1e-10 * matrix.jnp.trace(S) / S.shape[0]) * matrix.jnp.eye(S.shape[0]))
+                  for S in Ss]
 
             Ds = [sPhi[:,matrix.jnp.newaxis] * S * sPhi[matrix.jnp.newaxis,:] for S in Ss]
             bs = [matrix.jnp.trace(Ds[i] @ Ds[j]) for (i,j) in self.pairs]
 
-            orfs = orf(matrix.jnparray(self.angles))
-            # note the 2 to get OS = x^T Q x
+            orfs  = orf(matrix.jnparray(self.angles))
             denom = 2.0 * matrix.jnp.sqrt(matrix.jnp.sum(orfs**2 * matrix.jnparray(bs)))
 
             Q = matrix.jnpzeros((cnt, cnt))
-
             A_scaled = [sPhi[:, None] * A for A in As]
 
             for w, (i, j) in zip(orfs, self.pairs):
                 Bij = w * (A_scaled[i].T @ A_scaled[j])
-
                 Q = Q.at[inds[i], inds[j]].add(Bij)
                 Q = Q.at[inds[j], inds[i]].add(Bij.T)
 
             return Q / denom
-        get_Q.params = self.os_rhosigma.params
 
+        get_Q.params = self.os_rhosigma.params
         return get_Q
 
     @functools.cached_property

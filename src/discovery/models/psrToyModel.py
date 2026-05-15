@@ -28,10 +28,12 @@ def update_priordict_standard_mpta():
         # Per-pulsar GW background parameters
         '(.*_)?bkgrnd_log10_A':     [-18, -11],
         # GP parameters
-        '(.*_)?red_noise_log10_A.*':  [-18, -11],
-        '(.*_)?red_noise_gamma.*':    [0, 7],
-        '(.*_)?red_noise2_log10_A.*':  [-18, -11],
-        '(.*_)?red_noise2_gamma.*':    [0, 7],
+        '(.*_)?rednoise_log10_A.*': [-18, -11],
+        '(.*_)?rednoise_gamma.*':   [0, 7],
+        '(.*_)?red_noise_log10_A': [-18, -11],
+        '(.*_)?red_noise_gamma':   [0, 7],
+        '(.*_)?red_noise2_log10_A': [-18, -11],
+        '(.*_)?red_noise2_gamma':   [0, 7],
         '(.*_)?dm_gp_log10_A':      [-18, -11],
         '(.*_)?dm_gp_gamma':        [0, 7],
         '(.*_)?chrom_gp_log10_A':   [-18, -11],
@@ -247,13 +249,17 @@ def single_pulsar_noise_simple(psr, fftint=True, max_cadence_days=14, Tspan=None
     return m
 
 
-def GWB_simple_search_common(psrs, GlobalTspan=None, fftInt=False,ecorr=True, red=True, dm=True, chrom=True, sw=False,band=False, band_low=False, band_alpha=False, curn_fix_gamma=False, max_cadence_days=14,name="curn"):
+def GWB_simple_search_common(psrs, GlobalTspan=None, fftInt=True, efac_fix=False, ecorr=True, red=True, dm=True, chrom=True, sw=False,band=False, band_low=False, band_alpha=False, curn_fix_gamma=False, max_cadence_days=14,name="curn"):
         
     GlobalTspan = signals.getspan(psrs) if GlobalTspan is None else GlobalTspan
+
+    if efac_fix:
+        gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan, background=True, bkgrnd_fixed=False, curn=True, curn_fix_gamma=curn_fix_gamma, noisedict={f"{psr.name}_efac": 1.0}, ecorr=ecorr, global_ecorr=False, 
+                            red=red, dm=dm, chrom=chrom, sw=sw, band=band, band_low=band_low, band_alpha=band_alpha) for psr in psrs])
     
-    #noisedict={f"{psr.name}_efac": 1.0}
-    gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan, background=True, bkgrnd_fixed=False, curn=True, curn_fix_gamma=curn_fix_gamma, noisedict={}, ecorr=ecorr, global_ecorr=False, 
-                        red=red, dm=dm, chrom=chrom, sw=sw, band=band, band_low=band_low, band_alpha=band_alpha) for psr in psrs])
+    else:
+        gbl = likelihood.GlobalLikelihood([single_pulsar_noise_simple(psr, fftint=fftInt, max_cadence_days=max_cadence_days, GlobalTspan=GlobalTspan, background=True, bkgrnd_fixed=False, curn=True, curn_fix_gamma=curn_fix_gamma, noisedict={}, ecorr=ecorr, global_ecorr=False, 
+                            red=red, dm=dm, chrom=chrom, sw=sw, band=band, band_low=band_low, band_alpha=band_alpha) for psr in psrs])
     
     return gbl
 
