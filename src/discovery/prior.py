@@ -269,6 +269,19 @@ def sample_uniform(params, priordict={}, n=1, fail=True):
 
 priordict_gauss_standard = {}
 
+# Opt-in defaults for per-pulsar intrinsic GP power-law params.
+# Only includes patterns whose uniform range is already in priordict_standard,
+# so the truncated-Gaussian transform lookup will not raise. Pass explicitly:
+#     makelogtransform_uniform_gauss(func, gaussdict=prior.priordict_gauss_intrinsic), just test updated later
+priordict_gauss_intrinsic = {
+    "(.*_)?red_noise_log10_A": (-14.0, 3.0),
+    "(.*_)?red_noise_gamma":   (5.0,   0.05),
+    "(.*_)?dm_gp_log10_A":     (-14.5, 1.5),
+    "(.*_)?dm_gp_gamma":       (3.5,   1.5),
+    "(.*_)?chrom_gp_log10_A":  (-14.5, 1.5),
+    "(.*_)?chrom_gp_gamma":    (3.5,   1.5),
+}
+
 
 def getprior_gauss(par, gaussdict):
     if not gaussdict:

@@ -9,8 +9,12 @@ from numpyro import distributions as dist
 from .. import prior
 
 
-def makemodel_transformed(mylogl, transform=prior.makelogtransform_uniform, priordict={}):
-    logx = transform(mylogl, priordict=priordict)
+def makemodel_transformed(mylogl, transform=None, priordict={}, gaussdict=None):
+    if gaussdict:
+        logx = prior.makelogtransform_uniform_gauss(mylogl, priordict=priordict, gaussdict=gaussdict)
+    else:
+        chosen_transform = transform if transform is not None else prior.makelogtransform_uniform
+        logx = chosen_transform(mylogl, priordict=priordict)
 
     parlen = sum(int(par[par.index('(')+1:par.index(')')]) if '(' in par else 1 for par in logx.params)
 
@@ -20,6 +24,7 @@ def makemodel_transformed(mylogl, transform=prior.makelogtransform_uniform, prio
         numpyro.deterministic('log_likelihood', logl)
         numpyro.factor('logl', logx(pars))
     numpyro_model.to_df = lambda chain: logx.to_df(chain['pars'])
+    numpyro_model.gauss_params = getattr(logx, 'gauss_params', [])
 
     return numpyro_model
 
