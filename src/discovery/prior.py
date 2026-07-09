@@ -275,9 +275,9 @@ priordict_gauss_standard = {}
 #     makelogtransform_uniform_gauss(func, gaussdict=prior.priordict_gauss_intrinsic), just test updated later
 priordict_gauss_intrinsic = {
     "(.*_)?red_noise_log10_A": (-14.0, 3.0),
-    "(.*_)?red_noise_gamma":   (5.0,   0.05),
+    "(.*_)?red_noise_gamma":   (2.0,   1.5),
     "(.*_)?dm_gp_log10_A":     (-14.5, 1.5),
-    "(.*_)?dm_gp_gamma":       (3.5,   1.5),
+    "(.*_)?dm_gp_gamma":       (2.8,   1.5),
     "(.*_)?chrom_gp_log10_A":  (-14.5, 1.5),
     "(.*_)?chrom_gp_gamma":    (3.5,   1.5),
 }

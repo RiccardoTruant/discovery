@@ -264,6 +264,28 @@ def GWB_simple_search_common(psrs, GlobalTspan=None, fftInt=True, efac_fix=False
     return gbl
 
 
+def cgw_seach(psrs, GlobalTspan=None, max_cadence=14, cw_pulsarterm=False):
+
+    GlobalTspan = signals.getspan(psrs) if GlobalTspan is None else GlobalTspan
+    
+    cwcommon = ['cw_sindec', 'cw_cosinc', 'cw_log10_f0', 'cw_log10_h0',
+                'cw_phi_earth', 'cw_psi', 'cw_ra']
+    timedelay = deterministic.makedelay_binary(pulsarterm=cw_pulsarterm)
+
+    def psr_model(psr):
+        comps = [psr.residuals,
+                 signals.makegp_timing(psr, svd=True),
+                 signals.makenoise_measurement_simple(
+                     psr, noisedict={f"{psr.name}_efac": 1.0}, add_equad=False),
+                 signals.makedelay(psr, timedelay, common=cwcommon, name='cw')]
+        m = likelihood.PulsarLikelihood(comps)
+        comp_params = [p for c in comps if hasattr(c, 'params') for p in c.params]
+        m.all_params = sorted(set(m.all_params + comp_params))
+        m.logL.params = m.all_params
+        return m
+
+    return likelihood.GlobalLikelihood([psr_model(psr) for psr in psrs])
+
 
 
 def common_noise(psrs, chain_dfs, fftInt=False, max_cadence_days=14, name="gw_crn"):
