@@ -749,6 +749,13 @@ def fourierbasis_chrom(psr, components, T=None, fref=1400.0):
 
     return f, df, fmatfunc
 
+def fourierbasis_chrom_fix(psr, components, T=None, fref=1400.0):
+    f, df, fmat = fourierbasis(psr, components, T)
+
+    Chr = (fref / psr.freqs)**4
+
+    return f, df, fmat * Chr[:, None]
+
 def fourierbasis_band(psr, components, T=None):
     f, df, fmat = fourierbasis(psr, components, T)
 
